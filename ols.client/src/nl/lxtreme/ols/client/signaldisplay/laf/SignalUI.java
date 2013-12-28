@@ -65,12 +65,12 @@ public class SignalUI extends ComponentUI
    */
   private static RenderingHints createArrowRenderingHints()
   {
-    RenderingHints hints = new RenderingHints( RenderingHints.KEY_INTERPOLATION,
-        RenderingHints.VALUE_INTERPOLATION_BICUBIC );
-    hints.put( RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON );
-    hints.put( RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED );
-    hints.put( RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED );
-    hints.put( RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY );
+    RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+    hints.put(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    hints.put(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
+    hints.put(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
+    hints.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
     return hints;
   }
 
@@ -79,35 +79,35 @@ public class SignalUI extends ComponentUI
    */
   private static RenderingHints createCursorRenderingHints()
   {
-    RenderingHints hints = new RenderingHints( RenderingHints.KEY_INTERPOLATION,
-        RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR );
-    hints.put( RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON );
-    hints.put( RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED );
+    RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
+    hints.put(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+    hints.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
     return hints;
   }
 
   /**
    * Creates the rendering hints for this view.
-   * 
+   *
    * @param aUseAA
-   *          <code>true</code> if anti aliasing should be used,
-   *          <code>false</code> if anti aliasing shouldn't be used.
+   *         <code>true</code> if anti aliasing should be used,
+   *         <code>false</code> if anti aliasing shouldn't be used.
    */
-  private static RenderingHints createSignalRenderingHints( final boolean aUseAA )
+  private static RenderingHints createSignalRenderingHints(final boolean aUseAA)
   {
-    RenderingHints hints = new RenderingHints( RenderingHints.KEY_INTERPOLATION,
-        RenderingHints.VALUE_INTERPOLATION_BILINEAR );
-    hints.put( RenderingHints.KEY_ANTIALIASING, aUseAA ? RenderingHints.VALUE_ANTIALIAS_ON
-        : RenderingHints.VALUE_ANTIALIAS_OFF );
-    hints.put( RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED );
-    hints.put( RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED );
-    hints.put( RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED );
+    RenderingHints hints = new RenderingHints(RenderingHints.KEY_INTERPOLATION,
+            RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+    hints.put(RenderingHints.KEY_ANTIALIASING, aUseAA ? RenderingHints.VALUE_ANTIALIAS_ON
+            : RenderingHints.VALUE_ANTIALIAS_OFF);
+    hints.put(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
+    hints.put(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
+    hints.put(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
     return hints;
   }
 
   /**
    * Returns the current value of measurementRect.
-   * 
+   *
    * @return the measurementRect
    */
   public Rectangle getMeasurementRect()
@@ -118,14 +118,14 @@ public class SignalUI extends ComponentUI
   /**
    * {@inheritDoc}
    */
-  public void handleMeasureEvent( final MeasurementInfo aMeasurementInfo )
+  public void handleMeasureEvent(final MeasurementInfo aMeasurementInfo)
   {
     this.measurementInfo = aMeasurementInfo;
 
-    if ( aMeasurementInfo != null )
+    if (aMeasurementInfo != null)
     {
-      this.measurementRect = new Rectangle( aMeasurementInfo.getRectangle() );
-      this.measurementRect.grow( ArrowRenderer.HEAD_WIDTH, ArrowRenderer.HEAD_HEIGHT );
+      this.measurementRect = new Rectangle(aMeasurementInfo.getRectangle());
+      this.measurementRect.grow(ArrowRenderer.HEAD_WIDTH, ArrowRenderer.HEAD_HEIGHT);
     }
     else
     {
@@ -145,11 +145,11 @@ public class SignalUI extends ComponentUI
    * {@inheritDoc}
    */
   @Override
-  public void paint( final Graphics aGraphics, final JComponent aComponent )
+  public void paint(final Graphics aGraphics, final JComponent aComponent)
   {
-    final SignalView view = ( SignalView )aComponent;
+    final SignalView view = (SignalView) aComponent;
     final SignalViewModel model = view.getModel();
-    if ( !model.hasData() )
+    if (!model.hasData())
     {
       // Nothing to do!
       return;
@@ -160,15 +160,15 @@ public class SignalUI extends ComponentUI
     try
     {
       final Rectangle clip = aGraphics.getClipBounds();
-      final IUIElement[] elements = model.getSignalElements( clip.y, clip.height );
+      final IUIElement[] elements = model.getSignalElements(clip.y, clip.height);
 
-      Graphics2D canvas = ( Graphics2D )aGraphics.create();
+      Graphics2D canvas = (Graphics2D) aGraphics.create();
 
       try
       {
-        if ( elements.length > 0 )
+        if (elements.length > 0)
         {
-          paintSignals( canvas, model, elements );
+          paintSignals(canvas, model, elements);
         }
       }
       finally
@@ -179,22 +179,22 @@ public class SignalUI extends ComponentUI
 
       // Use the *original* graphics object, as the one defined above is
       // translated to some unknown coordinate system...
-      canvas = ( Graphics2D )aGraphics;
+      canvas = (Graphics2D) aGraphics;
 
       // Draw the cursor "flags"...
-      if ( model.isCursorMode() )
+      if (model.isCursorMode())
       {
-        paintCursors( canvas, model );
+        paintCursors(canvas, model);
       }
 
       // Draw the measurement stuff...
-      if ( model.isMeasurementMode() && MeasurementInfo.isDefined( this.measurementInfo ) )
+      if (model.isMeasurementMode() && MeasurementInfo.isDefined(this.measurementInfo))
       {
-        paintMeasurementArrow( canvas, model, this.measurementInfo );
+        paintMeasurementArrow(canvas, model, this.measurementInfo);
       }
 
       // Draw the annotations...
-      paintAnnotations( canvas, model, elements );
+      paintAnnotations(canvas, model, elements);
     }
     finally
     {
@@ -204,23 +204,23 @@ public class SignalUI extends ComponentUI
 
   /**
    * Returns the stroke to use to render the annotation lines.
-   * 
+   *
    * @param renderStyle
    * @param zoomFactor
    * @return
    */
-  private Stroke getAnnotationLineStroke( final boolean renderStyle, final double zoomFactor )
+  private Stroke getAnnotationLineStroke(final boolean renderStyle, final double zoomFactor)
   {
-    final float strokeWidth = ( float )( 3.0f / Math.max( 1.0f, ( 1.0f / zoomFactor ) ) );
+    final float strokeWidth = (float) (3.0f / Math.max(1.0f, (1.0f / zoomFactor)));
 
     final BasicStroke stroke;
-    if ( renderStyle )
+    if (renderStyle)
     {
-      stroke = new BasicStroke( strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND, 0.9f );
+      stroke = new BasicStroke(strokeWidth, BasicStroke.CAP_SQUARE, BasicStroke.JOIN_ROUND, 0.9f);
     }
     else
     {
-      stroke = new BasicStroke( strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0.9f );
+      stroke = new BasicStroke(strokeWidth, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 0.9f);
     }
 
     return stroke;
@@ -231,19 +231,19 @@ public class SignalUI extends ComponentUI
    * @param aModel
    * @param aSignalElements
    */
-  private void paintAnnotations( final Graphics2D aCanvas, final SignalViewModel aModel,
-      final IUIElement[] aSignalElements )
+  private void paintAnnotations(final Graphics2D aCanvas, final SignalViewModel aModel,
+                                final IUIElement[] aSignalElements)
   {
     final long[] timestamps = aModel.getTimestamps();
-    if ( ( timestamps == null ) || ( timestamps.length == 0 ) || ( aSignalElements.length == 0 ) )
+    if ((timestamps == null) || (timestamps.length == 0) || (aSignalElements.length == 0))
     {
       // Nothing to do...
       return;
     }
 
     final Rectangle clip = aCanvas.getClipBounds();
-    final int startIdx = aModel.getStartIndex( clip );
-    final int endIdx = aModel.getEndIndex( clip, timestamps.length );
+    final int startIdx = aModel.getStartIndex(clip);
+    final int endIdx = aModel.getEndIndex(clip, timestamps.length);
 
     final long startTimestamp = timestamps[startIdx];
     final long endTimestamp = timestamps[endIdx];
@@ -251,91 +251,91 @@ public class SignalUI extends ComponentUI
     final double zoomFactor = aModel.getZoomFactor();
 
     // Start drawing at the correct position in the clipped region...
-    aCanvas.translate( 0, aSignalElements[0].getYposition() );
+    aCanvas.translate(0, aSignalElements[0].getYposition());
 
     final boolean annotationRenderStyle = aModel.isRenderAnnotationAlternatively();
 
     // Some drawing primitives we're going to re-use over and over...
-    final Stroke stroke = getAnnotationLineStroke( annotationRenderStyle, zoomFactor );
+    final Stroke stroke = getAnnotationLineStroke(annotationRenderStyle, zoomFactor);
 
-    final AlphaComposite alphaComposite = AlphaComposite.SrcOver.derive( aModel.getAnnotationAlpha() );
+    final AlphaComposite alphaComposite = AlphaComposite.SrcOver.derive(aModel.getAnnotationAlpha());
 
-    for ( IUIElement element : aSignalElements )
+    for (IUIElement element : aSignalElements)
     {
-      if ( element instanceof SignalElement )
+      if (element instanceof SignalElement)
       {
-        SignalElement signalElement = ( SignalElement )element;
-        if ( signalElement.isDigitalSignal() )
+        SignalElement signalElement = (SignalElement) element;
+        if (signalElement.isDigitalSignal())
         {
           // Tell Swing how we would like to render ourselves...
-          aCanvas.setRenderingHints( createSignalRenderingHints( aModel.isRenderAnnotationAntiAliased() ) );
+          aCanvas.setRenderingHints(createSignalRenderingHints(aModel.isRenderAnnotationAntiAliased()));
 
-          aCanvas.setColor( signalElement.getColor() );
+          aCanvas.setColor(signalElement.getColor());
 
-          if ( signalElement.isEnabled() )
+          if (signalElement.isEnabled())
           {
-            final AnnotationsHelper helper = new AnnotationsHelper( aModel.getAnnotationData(), signalElement
-                .getChannel().getIndex() );
+            final AnnotationsHelper helper = new AnnotationsHelper(aModel.getAnnotationData(), signalElement
+                    .getChannel().getIndex());
 
-            aCanvas.setFont( aModel.getAnnotationFont() );
+            aCanvas.setFont(aModel.getAnnotationFont());
 
             final FontMetrics fm = aCanvas.getFontMetrics();
             final int fontHeight = fm.getHeight();
 
-            for ( DataAnnotation ann : helper.getDataAnnotations( startTimestamp, endTimestamp ) )
+            for (DataAnnotation ann : helper.getDataAnnotations(startTimestamp, endTimestamp))
             {
               final long annStartTime = ann.getStartTimestamp();
               final long annEndTime = ann.getEndTimestamp();
 
-              int x1 = ( int )( annStartTime * zoomFactor );
-              int x2 = ( int )( annEndTime * zoomFactor );
-              int y1 = signalElement.getOffset( aModel.getAnnotationAlignment() );
+              int x1 = (int) (annStartTime * zoomFactor);
+              int x2 = (int) (annEndTime * zoomFactor);
+              int y1 = signalElement.getOffset(aModel.getAnnotationAlignment());
               int y2 = y1 + signalElement.getSignalHeight();
-              int midY = y1 + ( ( y2 - y1 ) / 2 );
+              int midY = y1 + ((y2 - y1) / 2);
 
-              final String annText = helper.getText( ann );
+              final String annText = helper.getText(ann);
 
-              final int annotationWidth = ( x2 - x1 ) + 2;
+              final int annotationWidth = (x2 - x1) + 2;
 
               final Composite oldComposite = aCanvas.getComposite();
               final Stroke oldStroke = aCanvas.getStroke();
 
-              aCanvas.setComposite( alphaComposite );
+              aCanvas.setComposite(alphaComposite);
 
               // Fade out the signal itself...
-              aCanvas.setColor( aModel.getBackgroundColor() );
-              if ( annotationRenderStyle )
+              aCanvas.setColor(aModel.getBackgroundColor());
+              if (annotationRenderStyle)
               {
-                aCanvas.fillRect( x1, y1 + 0, annotationWidth, ( y2 - y1 ) + 1 );
+                aCanvas.fillRect(x1, y1 + 0, annotationWidth, (y2 - y1) + 1);
               }
               else
               {
-                aCanvas.fillRect( x1, y1 + 1, annotationWidth, ( y2 - y1 ) - 1 );
+                aCanvas.fillRect(x1, y1 + 1, annotationWidth, (y2 - y1) - 1);
               }
 
-              aCanvas.setComposite( oldComposite );
+              aCanvas.setComposite(oldComposite);
 
               // Draw the thick white boundaries...
-              aCanvas.setColor( aModel.getAnnotationColor() );
-              aCanvas.setStroke( stroke );
-              aCanvas.drawLine( x1, y1 + 2, x1, y2 - 2 );
-              aCanvas.drawLine( x2, y1 + 2, x2, y2 - 2 );
+              aCanvas.setColor(aModel.getAnnotationColor());
+              aCanvas.setStroke(stroke);
+              aCanvas.drawLine(x1, y1 + 2, x1, y2 - 2);
+              aCanvas.drawLine(x2, y1 + 2, x2, y2 - 2);
 
-              aCanvas.setStroke( oldStroke );
+              aCanvas.setStroke(oldStroke);
 
-              final int textWidth = fm.stringWidth( annText );
-              final int textXoffset = ( int )( ( annotationWidth - textWidth ) / 2.0 );
+              final int textWidth = fm.stringWidth(annText);
+              final int textXoffset = (int) ((annotationWidth - textWidth) / 2.0);
 
-              if ( textXoffset > 0 )
+              if (textXoffset > 0)
               {
-                int x3 = ( x1 + textXoffset );
-                if ( annotationRenderStyle && ( ( x3 - 4 ) > 0 ) )
+                int x3 = (x1 + textXoffset);
+                if (annotationRenderStyle && ((x3 - 4) > 0))
                 {
-                  aCanvas.drawLine( x1, midY, x3 - 4, midY );
-                  aCanvas.drawLine( x3 + textWidth + 8, midY, x2, midY );
+                  aCanvas.drawLine(x1, midY, x3 - 4, midY);
+                  aCanvas.drawLine(x3 + textWidth + 8, midY, x2, midY);
                 }
 
-                aCanvas.drawString( annText, x1 + textXoffset, y1 + fontHeight );
+                aCanvas.drawString(annText, x1 + textXoffset, y1 + fontHeight);
               }
             }
           }
@@ -343,88 +343,132 @@ public class SignalUI extends ComponentUI
       }
 
       // Advance to the next channel...
-      aCanvas.translate( 0, element.getHeight() + aModel.getSignalElementSpacing() );
+      aCanvas.translate(0, element.getHeight() + aModel.getSignalElementSpacing());
     }
   }
 
   /**
    * Paints the cursors over the signals.
-   * 
+   *
    * @param aCanvas
-   *          the canvas to paint the cursor on;
+   *         the canvas to paint the cursor on;
    * @param aModel
-   *          the model to use;
+   *         the model to use;
    */
-  private void paintCursors( final Graphics2D aCanvas, final SignalViewModel aModel )
+  private void paintCursors(final Graphics2D aCanvas, final SignalViewModel aModel)
   {
     final Rectangle clip = aCanvas.getClipBounds();
 
     // Tell Swing how we would like to render ourselves...
-    aCanvas.setRenderingHints( createCursorRenderingHints() );
+    aCanvas.setRenderingHints(createCursorRenderingHints());
 
-    for ( int i = 0; i < OlsConstants.MAX_CURSORS; i++ )
+    for (int i = 0; i < OlsConstants.MAX_CURSORS; i++)
     {
-      int cursorXpos = aModel.getCursorScreenCoordinate( i );
+      int cursorXpos = aModel.getCursorScreenCoordinate(i);
 
-      if ( ( cursorXpos < 0 ) || !clip.contains( cursorXpos, clip.y ) )
+      if ((cursorXpos < 0) || !clip.contains(cursorXpos, clip.y))
       {
         // Trivial reject: don't paint undefined cursors, or cursors outside the
         // clip boundaries...
         continue;
       }
 
-      aCanvas.setColor( aModel.getCursorColor( i ) );
+      aCanvas.setColor(aModel.getCursorColor(i));
 
-      aCanvas.drawLine( cursorXpos, clip.y, cursorXpos, clip.y + clip.height );
+      aCanvas.drawLine(cursorXpos, clip.y, cursorXpos, clip.y + clip.height);
     }
   }
 
   /**
    * Renders the measurement information arrows.
-   * 
+   *
    * @param aCanvas
-   *          the canvas to paint the measurement arrows on, cannot be
-   *          <code>null</code>;
+   *         the canvas to paint the measurement arrows on, cannot be
+   *         <code>null</code>;
    * @param aModel
-   *          the model to use, cannot be <code>null</code>;
+   *         the model to use, cannot be <code>null</code>;
    * @param aMeasurementInfo
-   *          the measurement information, cannot be <code>null</code> or empty.
+   *         the measurement information, cannot be <code>null</code> or empty.
    */
-  private void paintMeasurementArrow( final Graphics2D aCanvas, final SignalViewModel aModel,
-      final MeasurementInfo aMeasurementInfo )
+  private void paintMeasurementArrow(final Graphics2D aCanvas, final SignalViewModel aModel,
+                                     final MeasurementInfo aMeasurementInfo)
   {
     Rectangle signalHoverRect = aMeasurementInfo.getRectangle();
     int x = signalHoverRect.x;
-    int y = ( int )signalHoverRect.getCenterY();
+    int y = (int) signalHoverRect.getCenterY();
     int w = signalHoverRect.width;
     int middlePos = aMeasurementInfo.getMidSamplePos().intValue() - x;
 
     // Tell Swing how we would like to render ourselves...
-    aCanvas.setRenderingHints( createArrowRenderingHints() );
+    aCanvas.setRenderingHints(createArrowRenderingHints());
 
-    aCanvas.setColor( aModel.getMeasurementArrowColor() );
+    aCanvas.setColor(aModel.getMeasurementArrowColor());
 
     // Allow arrow renderer to start with [0, 0] as coordinate system...
-    aCanvas.translate( x, y );
+    aCanvas.translate(x, y);
 
-    ArrowRenderer.render( aCanvas, w, middlePos );
+    ArrowRenderer.render(aCanvas, w, middlePos);
 
     // Restore to original coordinate system...
-    aCanvas.translate( -x, -y );
+    aCanvas.translate(-x, -y);
+  }
+
+  /**
+   * Transforms a raw captured value by eliminating the bits corresponding to the zero bits in the
+   * (group) mask by shifting to the right the desired bits over undesired bits
+   *
+   * @param rawCapturedValue
+   *         the full bits of the captured sample
+   * @param groupMask
+   *         the mask associated to the group
+   * @return value associated to the bits selected in the mask in their original magnitude order
+   * (please not that the bit order is not changed accordingly to the signal order selected
+   * in the UI group, but the bits are only grouped together to the right)
+   */
+  private int transformGroupValueUsingGroupMask(int rawCapturedValue, int groupMask)
+  {
+    // Filtering only the desired bits using the mask
+    rawCapturedValue &= groupMask;
+    // Getting rid of the leading zeros in the mask and data
+    int leadingZeros = Math.max(Integer.numberOfLeadingZeros(groupMask),
+            Integer.numberOfLeadingZeros(rawCapturedValue));
+    groupMask <<= leadingZeros;
+    rawCapturedValue <<= leadingZeros;
+
+    int transformedValue = 0;
+    //we only need to continue while the mask still contains desirable bits
+    while (groupMask != 0)
+    {
+      // Skipping eventual groups of zero bits  in the mask
+      leadingZeros = Integer.numberOfLeadingZeros(groupMask);
+      groupMask <<= leadingZeros;
+      rawCapturedValue <<= leadingZeros;
+      //shifting left the transformed value to make space for the next bit
+      transformedValue <<= 1;
+      //appending the next bit to the transformed value
+      if ((rawCapturedValue & 0x80000000) != 0)
+      {
+        transformedValue |= 0x01;
+      }
+      //moving to the next eventual desirable bit in the mask
+      groupMask <<= 1;
+      rawCapturedValue <<= 1;
+    }
+    return transformedValue;
   }
 
   /**
    * Paints the individual signal channels, group bytes and analogue scope
    * signals.
-   * 
+   *
    * @param aCanvas
-   *          the canvas to paint on, cannot be <code>null</code>;
+   *         the canvas to paint on, cannot be <code>null</code>;
    * @param aModel
-   *          the model to use, cannot be <code>null</code>;
+   *         the model to use, cannot be <code>null</code>;
    * @param aElements
-   *          the UI-elements to draw, cannot be <code>null</code> or empty!
+   *         the UI-elements to draw, cannot be <code>null</code> or empty!
    */
-  private void paintSignals( final Graphics2D aCanvas, final SignalViewModel aModel, final IUIElement[] aElements )
+  private void paintSignals(final Graphics2D aCanvas, final SignalViewModel aModel, final IUIElement[] aElements)
   {
     final int[] values = aModel.getDataValues();
     final long[] timestamps = aModel.getTimestamps();
@@ -432,63 +476,63 @@ public class SignalUI extends ComponentUI
 
     final Rectangle clip = aCanvas.getClipBounds();
 
-    aCanvas.setBackground( aModel.getBackgroundColor() );
-    aCanvas.clearRect( clip.x, clip.y, clip.width, clip.height );
+    aCanvas.setBackground(aModel.getBackgroundColor());
+    aCanvas.clearRect(clip.x, clip.y, clip.width, clip.height);
 
-    final int startIdx = aModel.getStartIndex( clip );
-    final int endIdx = aModel.getEndIndex( clip, values.length );
+    final int startIdx = aModel.getStartIndex(clip);
+    final int endIdx = aModel.getEndIndex(clip, values.length);
 
     final double zoomFactor = aModel.getZoomFactor();
 
-    if ( aModel.hasTriggerData() )
+    if (aModel.hasTriggerData())
     {
       final long triggerOffset = aModel.getTriggerOffset();
-      if ( ( timestamps[startIdx] <= triggerOffset ) && ( timestamps[endIdx] >= triggerOffset ) )
+      if ((timestamps[startIdx] <= triggerOffset) && (timestamps[endIdx] >= triggerOffset))
       {
         // Draw a line denoting the trigger position...
-        final int x = ( int )Math.round( triggerOffset * zoomFactor ) - 1;
+        final int x = (int) Math.round(triggerOffset * zoomFactor) - 1;
 
-        aCanvas.setColor( aModel.getTriggerColor() );
-        aCanvas.drawLine( x, clip.y, x, clip.y + clip.height );
+        aCanvas.setColor(aModel.getTriggerColor());
+        aCanvas.drawLine(x, clip.y, x, clip.y + clip.height);
       }
     }
 
     // Start drawing at the correct position in the clipped region...
-    aCanvas.translate( 0, aElements[0].getYposition() );
+    aCanvas.translate(0, aElements[0].getYposition());
 
     final boolean enableSloppyScopePainting = aModel.isSloppyScopeRenderingAllowed();
     int lastP = 0;
 
-    for ( IUIElement element : aElements )
+    for (IUIElement element : aElements)
     {
-      if ( element instanceof ElementGroup )
+      if (element instanceof ElementGroup)
       {
         // Draw nothing...
 
         // advance to the next element...
-        aCanvas.translate( 0, element.getHeight() + aModel.getSignalElementSpacing() );
+        aCanvas.translate(0, element.getHeight() + aModel.getSignalElementSpacing());
 
         continue;
       }
 
-      aCanvas.setColor( element.getColor() );
+      aCanvas.setColor(element.getColor());
 
-      final SignalElement signalElement = ( SignalElement )element;
+      final SignalElement signalElement = (SignalElement) element;
 
-      if ( signalElement.isDigitalSignal() )
+      if (signalElement.isDigitalSignal())
       {
         int signalHeight = signalElement.getSignalHeight();
         int signalOffset = signalElement.getOffset();
 
         // Tell Swing how we would like to render ourselves...
-        aCanvas.setRenderingHints( createSignalRenderingHints( false /* aUseAA */) );
+        aCanvas.setRenderingHints(createSignalRenderingHints(false /* aUseAA */));
 
-        aCanvas.translate( 0, signalOffset );
+        aCanvas.translate(0, signalOffset);
 
-        if ( !signalElement.isEnabled() || ( startIdx == endIdx ) )
+        if (!signalElement.isEnabled() || (startIdx == endIdx))
         {
           // Forced zero'd channel is *very* easy to draw...
-          aCanvas.drawLine( clip.x, signalHeight, clip.x + clip.width, signalHeight );
+          aCanvas.drawLine(clip.x, signalHeight, clip.x + clip.width, signalHeight);
         }
 
         else
@@ -498,101 +542,101 @@ public class SignalUI extends ComponentUI
 
           // Make sure we always start with time 0...
           long prevTimestamp = timestamps[startIdx];
-          int prevSampleValue = ( values[startIdx] & mask );
+          int prevSampleValue = (values[startIdx] & mask);
 
-          x[0] = ( int )( zoomFactor * prevTimestamp );
-          y[0] = ( prevSampleValue == 0 ? signalHeight : 0 );
+          x[0] = (int) (zoomFactor * prevTimestamp);
+          y[0] = (prevSampleValue == 0 ? signalHeight : 0);
           int p = 1;
 
-          for ( int sampleIdx = startIdx + 1; sampleIdx <= endIdx; sampleIdx++ )
+          for (int sampleIdx = startIdx + 1; (p < POINT_COUNT) && (sampleIdx <= endIdx); sampleIdx++)
           {
-            int sampleValue = ( values[sampleIdx] & mask );
-            if ( prevSampleValue != sampleValue )
+            int sampleValue = (values[sampleIdx] & mask);
+            if (prevSampleValue != sampleValue)
             {
               long timestamp = timestamps[sampleIdx];
 
-              int xValue = ( int )( zoomFactor * timestamp );
+              int xValue = (int) (zoomFactor * timestamp);
 
               x[p] = xValue;
-              y[p] = ( prevSampleValue == 0 ? signalHeight : 0 );
+              y[p] = (prevSampleValue == 0 ? signalHeight : 0);
               p++;
 
               x[p] = xValue;
-              y[p] = ( sampleValue == 0 ? signalHeight : 0 );
+              y[p] = (sampleValue == 0 ? signalHeight : 0);
               p++;
 
               prevSampleValue = sampleValue;
               prevTimestamp = timestamp;
             }
 
-            if ( p >= ( x.length - 2 ) )
+            if (p >= (x.length - 2))
             {
-              aCanvas.drawPolyline( x, y, p );
+              aCanvas.drawPolyline(x, y, p);
               p = 0;
             }
           }
 
-          x[p] = ( int )( zoomFactor * absLength );
-          y[p] = ( values[endIdx] & mask ) == 0 ? signalHeight : 0;
+          x[p] = (int) (zoomFactor * absLength);
+          y[p] = (values[endIdx] & mask) == 0 ? signalHeight : 0;
           p++;
 
-          aCanvas.drawPolyline( x, y, p );
+          aCanvas.drawPolyline(x, y, p);
 
-          lastP = ( int )( ( p * 0.1 ) + ( lastP * 0.9 ) );
+          lastP = (int) ((p * 0.1) + (lastP * 0.9));
         }
 
         // Move back to the original position...
-        aCanvas.translate( 0, -signalOffset );
+        aCanvas.translate(0, -signalOffset);
       }
 
       int sampleIncr = 1;
-      if ( enableSloppyScopePainting && ( lastP > SLOPPY_DRAW_THRESHOLD ) )
+      if (enableSloppyScopePainting && (lastP > SLOPPY_DRAW_THRESHOLD))
       {
-        sampleIncr = ( int )Math.max( 1.0, ( 1.0 / zoomFactor ) );
+        sampleIncr = (int) Math.max(1.0, (1.0 / zoomFactor));
       }
 
-      if ( signalElement.isGroupSummary() )
+      if (signalElement.isGroupSummary())
       {
         // Tell Swing how we would like to render ourselves...
-        aCanvas.setRenderingHints( createSignalRenderingHints( aModel.isRenderGroupSummaryAntiAliased() ) );
+        aCanvas.setRenderingHints(createSignalRenderingHints(aModel.isRenderGroupSummaryAntiAliased()));
 
         int mask = signalElement.getMask();
 
         int padding = aModel.getGroupSummaryPadding();
 
-        int prevSampleValue = values[startIdx] & mask;
-        int prevX = ( int )( zoomFactor * timestamps[startIdx] );
+        int prevSampleValue = transformGroupValueUsingGroupMask(values[startIdx], mask);
+        int prevX = (int) (zoomFactor * timestamps[startIdx]);
 
-        aCanvas.setFont( aModel.getGroupSummaryTextFont() );
+        aCanvas.setFont(aModel.getGroupSummaryTextFont());
 
         FontMetrics fm = aCanvas.getFontMetrics();
-        int textYpos = ( int )( ( signalElement.getHeight() + fm.getLeading() + fm.getMaxAscent() ) / 2.0 ) - padding;
+        int textYpos = (int) ((signalElement.getHeight() + fm.getLeading() + fm.getMaxAscent()) / 2.0) - padding;
 
-        for ( int sampleIdx = startIdx + 1; sampleIdx < endIdx; sampleIdx += sampleIncr )
+        for (int sampleIdx = startIdx + 1; sampleIdx < endIdx; sampleIdx += sampleIncr)
         {
-          int sampleValue = ( values[sampleIdx] & mask );
+          int sampleValue = transformGroupValueUsingGroupMask(values[sampleIdx], mask);
 
-          if ( sampleValue != prevSampleValue )
+          if (sampleValue != prevSampleValue)
           {
-            int x = ( int )( zoomFactor * timestamps[sampleIdx] );
+            int x = (int) (zoomFactor * timestamps[sampleIdx]);
 
-            String text = String.format( "%02X", Integer.valueOf( prevSampleValue ) );
+            String text = String.format("%02X", Integer.valueOf(prevSampleValue));
 
-            int textWidth = fm.stringWidth( text ) + ( 2 * padding );
+            int textWidth = fm.stringWidth(text) + (2 * padding);
             int cellWidth = x - prevX;
-            if ( textWidth < cellWidth )
+            if (textWidth < cellWidth)
             {
-              int textXpos = prevX + ( int )( ( cellWidth - textWidth ) / 2.0 ) + padding;
+              int textXpos = prevX + (int) ((cellWidth - textWidth) / 2.0) + padding;
 
-              aCanvas.setColor( signalElement.getColor() );
+              aCanvas.setColor(signalElement.getColor());
 
-              aCanvas.drawString( text, textXpos, textYpos );
+              aCanvas.drawString(text, textXpos, textYpos);
             }
 
-            aCanvas.setColor( aModel.getGroupSummaryBarColor() );
+            aCanvas.setColor(aModel.getGroupSummaryBarColor());
 
             // draw a small line...
-            aCanvas.drawLine( x, padding, x, signalElement.getHeight() - padding );
+            aCanvas.drawLine(x, padding, x, signalElement.getHeight() - padding);
 
             prevX = x;
           }
@@ -601,22 +645,24 @@ public class SignalUI extends ComponentUI
         }
       }
 
-      if ( signalElement.isAnalogSignal() )
+      if (signalElement.isAnalogSignal())
       {
         // Tell Swing how we would like to render ourselves...
-        aCanvas.setRenderingHints( createSignalRenderingHints( aModel.isRenderScopeSignalAntiAliased() ) );
+        aCanvas.setRenderingHints(createSignalRenderingHints(aModel.isRenderScopeSignalAntiAliased()));
 
-        aCanvas.setColor( signalElement.getColor() );
+        aCanvas.setColor(signalElement.getColor());
 
-        long mask = signalElement.getMask() & 0xFFFFFFFFL;
-        final int trailingZeros = Long.numberOfTrailingZeros( mask );
-        final int onesCount = Long.SIZE - Long.numberOfLeadingZeros( mask ) - trailingZeros;
-        final long maxValue = ( ( 1L << onesCount ) - 1L ) & 0xFFFFFFFFL;
-        double scaleFactor = ( maxValue == 0L ) ? 1.0 : signalElement.getHeight() / ( double )maxValue;
+        // The max value is given by the number of one bits in the group mask
+        // because the value will be trimmed of trailing zeros
+        // and the inner bits corresponding to the zero bits in the mask are extracted
+        // to form a continuous bit field
+        int mask = signalElement.getMask();
+        final long maxValue = (1 << Integer.bitCount(mask)) - 1;
+        double scaleFactor = (maxValue == 0L) ? 1.0 : signalElement.getHeight() / (double) maxValue;
 
         // Make sure we always start with time 0...
         int p = 0;
-        if ( startIdx == endIdx )
+        if (startIdx == endIdx)
         {
           x[p] = clip.x;
           y[p] = signalElement.getHeight();
@@ -624,20 +670,36 @@ public class SignalUI extends ComponentUI
         }
         else
         {
-          for ( int sampleIdx = startIdx; ( p < POINT_COUNT ) && ( sampleIdx < endIdx ); sampleIdx += sampleIncr )
+          int previousSampleValue = values[startIdx];
+          for (int sampleIdx = startIdx; (p < POINT_COUNT) && (sampleIdx < endIdx); sampleIdx += sampleIncr)
           {
             long timestamp = timestamps[sampleIdx];
 
-            int sampleValue = ( int )( ( values[sampleIdx] & mask ) >> trailingZeros );
-            final int i_max = Math.min( endIdx, ( sampleIdx + sampleIncr ) - 1 );
-            for ( int i = sampleIdx + 1; i < i_max; i++ )
+            int sampleValue = transformGroupValueUsingGroupMask(values[sampleIdx], mask);
+            final int i_max = Math.min(endIdx, (sampleIdx + sampleIncr) - 1);
+            for (int i = sampleIdx + 1; i < i_max; i++)
             {
-              sampleValue += ( ( values[i] & mask ) >> trailingZeros );
+              sampleValue += transformGroupValueUsingGroupMask(values[i], mask);
             }
-            sampleValue = ( int )( maxValue - ( sampleValue / ( double )sampleIncr ) );
+            // Drawing a straight line from the previous different timestamp value point
+            // to the immediate previous timestamp of the current timestamp;
+            // this fixes the long, unreal, slopes that show up when RLE compression is used
+            // by creating the slope only between two real sampling timestamps
+            x[p] = (int) (zoomFactor * (timestamp - 1));
+            y[p] = (int) (scaleFactor * previousSampleValue);
+            p++;
 
-            x[p] = ( int )( zoomFactor * timestamp );
-            y[p] = ( int )( scaleFactor * sampleValue );
+            // Making sure we don't step over the allocated memory "edge"
+            if (p >= POINT_COUNT)
+            {
+              break;
+            }
+
+            // Draw the point of the current sample
+            sampleValue = (int) (maxValue - (sampleValue / (double) sampleIncr));
+            previousSampleValue = sampleValue;
+            x[p] = (int) (zoomFactor * timestamp);
+            y[p] = (int) (scaleFactor * sampleValue);
             p++;
           }
         }
@@ -647,11 +709,11 @@ public class SignalUI extends ComponentUI
         y[p] = y[p - 1];
         p++;
 
-        aCanvas.drawPolyline( x, y, p );
+        aCanvas.drawPolyline(x, y, p);
       }
 
       // advance to the next element...
-      aCanvas.translate( 0, signalElement.getHeight() + aModel.getSignalElementSpacing() );
+      aCanvas.translate(0, signalElement.getHeight() + aModel.getSignalElementSpacing());
     }
   }
 }
