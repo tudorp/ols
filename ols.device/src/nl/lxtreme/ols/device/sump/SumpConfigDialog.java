@@ -21,6 +21,7 @@
 package nl.lxtreme.ols.device.sump;
 
 
+import static nl.lxtreme.ols.device.sump.SumpConstants.*;
 import static nl.lxtreme.ols.common.OlsConstants.*;
 import static nl.lxtreme.ols.device.sump.ConfigDialogHelper.*;
 import static nl.lxtreme.ols.util.swing.SwingComponentUtils.*;
@@ -50,7 +51,7 @@ import purejavacomm.*;
 /**
  * Provides the configuration dialog for the Open Bench Logic Sniffer device.
  */
-public final class LogicSnifferConfigDialog extends JDialog implements Configurable, Closeable
+public final class SumpConfigDialog extends JDialog implements Configurable, Closeable
 {
   // INNER TYPES
 
@@ -69,20 +70,11 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
       if ( value instanceof Integer )
       {
         double size = ( ( Integer )value ).doubleValue();
+        double sampleRate = getSelectedSampleRate();
+        double time = size / sampleRate;
 
-        int enabledGroups = getEnabledChannelGroups();
-        if ( enabledGroups > 0 )
-        {
-          int sampleRate = getSelectedSampleRate();
-          double time = ( enabledGroups != 0 ) ? size / ( sampleRate * enabledGroups ) : 0.0;
-
-          value = String.format( "<html>%s&nbsp;&nbsp;<span style='color:gray;font-size:0.85em;'>(%s)</span></html>",
-              Unit.SizeSI.format( size ), Unit.Time.format( time ) );
-        }
-        else
-        {
-          value = String.format( "%s", Unit.SizeSI.format( size ) );
-        }
+        value = String.format( "<html>%s&nbsp;&nbsp;<span style='color:gray;font-size:0.85em;'>(%s)</span></html>",
+            Unit.SizeSI.format( size ), Unit.Time.format( time ) );
       }
       return super.getListCellRendererComponent( aList, value, aIndex, aIsSelected, aCellHasFocus );
     }
@@ -252,7 +244,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
 
   // VARIABLES
 
-  private final LogicSnifferDevice logicSnifferDevice;
+  private final SumpDevice logicSnifferDevice;
 
   private LogicSnifferDeviceProfilePanel deviceProfilePanel;
 
@@ -305,7 +297,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
    * @param aDevice
    *          the logic sniffer device to configure.
    */
-  public LogicSnifferConfigDialog( final Window aParent, final LogicSnifferDevice aDevice )
+  public SumpConfigDialog( final Window aParent, final SumpDevice aDevice )
   {
     super( aParent, "OLS Capture settings", ModalityType.DOCUMENT_MODAL );
 
@@ -379,20 +371,17 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
   }
 
   /**
-   * @return a {@link LogicSnifferConfig} instance, never <code>null</code>.
+   * @return a {@link SumpConfig} instance, never <code>null</code>.
    */
-  public LogicSnifferConfig getConfiguration()
+  public SumpConfig getConfiguration()
   {
-    final LogicSnifferConfig config = new LogicSnifferConfig();
-
-    // the current device profile...
-    config.setDeviceProfile( this.deviceProfile );
+    SumpConfigBuilder builder = new SumpConfigBuilder( this.deviceProfile );
 
     // how should we connect to our device?
-    config.setConnectionURI( getConnectionURI() );
+    builder.setConnectionURI( getConnectionURI() );
 
     // set clock source
-    config.setClockSource( ( CaptureClockSource )this.sourceSelect.getSelectedItem() );
+    builder.setClockSource( ( CaptureClockSource )this.sourceSelect.getSelectedItem() );
 
     // set enabled channel groups
     int enabledChannels = 0;
@@ -403,38 +392,38 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
         enabledChannels |= 0xff << ( 8 * i );
       }
     }
-    config.setEnabledChannels( enabledChannels );
+    builder.setEnabledChannels( enabledChannels );
 
     // set sample rate; use a default to ensure the internal state remains
     // correct...
-    config.setSampleRate( getSelectedSampleRate() );
+    builder.setSampleRate( getSelectedSampleRate() );
 
     // set sample count
-    config.setSampleCount( getSelectedSampleCount() );
+    builder.setSampleCount( getSelectedSampleCount() );
 
     // set before / after ratio
     double r = 1.0 - ( this.ratioSlider.getValue() / ( double )this.ratioSlider.getMaximum() );
-    config.setRatio( r );
+    builder.setRatio( r );
 
     // set filter
-    config.setFilterEnabled( this.filterEnable.isEnabled() && this.filterEnable.isSelected() );
-    config.setRleEnabled( this.rleEnable.isEnabled() && this.rleEnable.isSelected() );
+    builder.setFilterEnabled( this.filterEnable.isEnabled() && this.filterEnable.isSelected() );
+    builder.setRleEnabled( this.rleEnable.isEnabled() && this.rleEnable.isSelected() );
 
     // set number scheme
     NumberingScheme scheme = ( NumberingScheme )this.numberSchemeSelect.getSelectedItem();
-    config.setAltNumberSchemeEnabled( NumberingScheme.OUTSIDE.equals( scheme ) );
+    builder.setAltNumberSchemeEnabled( NumberingScheme.OUTSIDE.equals( scheme ) );
 
     // set testing mode
-    config.setTestModeEnabled( this.testModeEnable.isEnabled() && this.testModeEnable.isSelected() );
+    builder.setTestModeEnabled( this.testModeEnable.isEnabled() && this.testModeEnable.isSelected() );
 
     // set trigger
     final boolean triggerEnabled = this.triggerEnable.isEnabled() && this.triggerEnable.isSelected();
-    config.setTriggerEnabled( triggerEnabled );
+    builder.setTriggerEnabled( triggerEnabled );
 
     if ( triggerEnabled )
     {
       final boolean complex = TriggerType.COMPLEX.equals( this.triggerTypeSelect.getSelectedItem() );
-      for ( int stage = 0; stage < LogicSnifferConfig.TRIGGER_STAGES; stage++ )
+      for ( int stage = 0; stage < MAX_COMPLEX_TRIGGER_STAGES; stage++ )
       {
         int m = 0;
         int v = 0;
@@ -460,11 +449,11 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
         {
           if ( parallelTriggerStage )
           {
-            config.setParallelTrigger( stage, m, v, level, delay, startCapture );
+            builder.setParallelTrigger( stage, m, v, level, delay, startCapture );
           }
           else
           {
-            config.setSerialTrigger( stage, channel, m, v, level, delay, startCapture );
+            builder.setSerialTrigger( stage, channel, m, v, level, delay, startCapture );
           }
         }
         else
@@ -473,23 +462,23 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
           {
             if ( parallelTriggerStage )
             {
-              config.setParallelTrigger( stage, m, v, 0, delay, true );
+              builder.setParallelTrigger( stage, m, v, 0, delay, true );
             }
             else
             {
-              config.setSerialTrigger( stage, channel, m, v, 0, delay, true );
+              builder.setSerialTrigger( stage, channel, m, v, 0, delay, true );
             }
           }
           else
           {
             // make sure stages > 0 will not interfere
-            config.setParallelTrigger( stage, 0, 0, 3, 0, false );
+            builder.setParallelTrigger( stage, 0, 0, 3, 0, false );
           }
         }
       }
     }
 
-    return config;
+    return builder.build();
   }
 
   /**
@@ -537,7 +526,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     this.triggerTypeSelect
         .setSelectedIndex( aSettings.getInt( "triggerType", this.triggerTypeSelect.getSelectedIndex() ) );
 
-    for ( int stage = 0; stage < LogicSnifferConfig.TRIGGER_STAGES; stage++ )
+    for ( int stage = 0; stage < MAX_COMPLEX_TRIGGER_STAGES; stage++ )
     {
       final String prefix = "triggerStage." + stage;
 
@@ -618,7 +607,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     aSettings.putBoolean( "trigger", this.triggerEnable.isSelected() );
     aSettings.putInt( "triggerType", this.triggerTypeSelect.getSelectedIndex() );
 
-    for ( int stage = 0; stage < LogicSnifferConfig.TRIGGER_STAGES; stage++ )
+    for ( int stage = 0; stage < MAX_COMPLEX_TRIGGER_STAGES; stage++ )
     {
       final String prefix = "triggerStage." + stage;
 
@@ -839,7 +828,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
       {
         boolean configCorrect = verifyConfiguration( true /* aWarnUserIfConfigIncorrect */);
 
-        LogicSnifferConfigDialog.this.dialogResult = configCorrect;
+        SumpConfigDialog.this.dialogResult = configCorrect;
 
         if ( configCorrect )
         {
@@ -949,13 +938,13 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
       @Override
       protected String getConnectionURI()
       {
-        return LogicSnifferConfigDialog.this.getConnectionURI();
+        return SumpConfigDialog.this.getConnectionURI();
       }
 
       @Override
       protected void updateDeviceProfile( final DeviceProfile aProfile )
       {
-        LogicSnifferConfigDialog.this.updateDeviceProfile( aProfile );
+        SumpConfigDialog.this.updateDeviceProfile( aProfile );
       }
     };
 
@@ -1172,6 +1161,10 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
   private int getSelectedSampleRate()
   {
     Integer speed = ( Integer )this.speedSelect.getSelectedItem();
+    if ( speed == null )
+    {
+      return 1000000;
+    }
     return speed.intValue();
   }
 
@@ -1301,22 +1294,22 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     this.triggerTypeSelect.addActionListener( fieldUpdater );
 
     this.triggerStageTabs = new JTabbedPane();
-    this.triggerMask = new JCheckBox[LogicSnifferConfig.TRIGGER_STAGES][];
-    this.triggerValue = new JCheckBox[LogicSnifferConfig.TRIGGER_STAGES][];
-    this.triggerLevel = new JComboBox[LogicSnifferConfig.TRIGGER_STAGES];
-    this.triggerDelay = new JTextField[LogicSnifferConfig.TRIGGER_STAGES];
-    this.triggerMode = new JComboBox[LogicSnifferConfig.TRIGGER_STAGES];
-    this.triggerChannel = new JComboBox[LogicSnifferConfig.TRIGGER_STAGES];
-    this.triggerStart = new JCheckBox[LogicSnifferConfig.TRIGGER_STAGES];
+    this.triggerMask = new JCheckBox[MAX_COMPLEX_TRIGGER_STAGES][];
+    this.triggerValue = new JCheckBox[MAX_COMPLEX_TRIGGER_STAGES][];
+    this.triggerLevel = new JComboBox[MAX_COMPLEX_TRIGGER_STAGES];
+    this.triggerDelay = new JTextField[MAX_COMPLEX_TRIGGER_STAGES];
+    this.triggerMode = new JComboBox[MAX_COMPLEX_TRIGGER_STAGES];
+    this.triggerChannel = new JComboBox[MAX_COMPLEX_TRIGGER_STAGES];
+    this.triggerStart = new JCheckBox[MAX_COMPLEX_TRIGGER_STAGES];
 
     // @@@
-    this.triggerHexMask = new JTextField[LogicSnifferConfig.TRIGGER_STAGES];
-    this.triggerHexValue = new JTextField[LogicSnifferConfig.TRIGGER_STAGES];
-    this.applyHexMaskButton = new JButton[LogicSnifferConfig.TRIGGER_STAGES];
-    this.applyHexValueButton = new JButton[LogicSnifferConfig.TRIGGER_STAGES];
-    this.invertHexValue = new JCheckBox[LogicSnifferConfig.TRIGGER_STAGES];
+    this.triggerHexMask = new JTextField[MAX_COMPLEX_TRIGGER_STAGES];
+    this.triggerHexValue = new JTextField[MAX_COMPLEX_TRIGGER_STAGES];
+    this.applyHexMaskButton = new JButton[MAX_COMPLEX_TRIGGER_STAGES];
+    this.applyHexValueButton = new JButton[MAX_COMPLEX_TRIGGER_STAGES];
+    this.invertHexValue = new JCheckBox[MAX_COMPLEX_TRIGGER_STAGES];
 
-    for ( int i = 0; i < LogicSnifferConfig.TRIGGER_STAGES; i++ )
+    for ( int i = 0; i < MAX_COMPLEX_TRIGGER_STAGES; i++ )
     {
       final JPanel stagePane = new JPanel( new GridBagLayout() );
       stagePane.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
@@ -1384,7 +1377,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
           }
           catch ( NumberFormatException e )
           {
-            JOptionPane.showMessageDialog( LogicSnifferConfigDialog.this,
+            JOptionPane.showMessageDialog( SumpConfigDialog.this,
                 "Illegal number format!\nPlease enter a hexadecimal value." );
           }
           finally
@@ -1425,7 +1418,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
           }
           catch ( NumberFormatException e )
           {
-            JOptionPane.showMessageDialog( LogicSnifferConfigDialog.this,
+            JOptionPane.showMessageDialog( SumpConfigDialog.this,
                 "Illegal number format!\nPlease enter a hexadecimal value." );
           }
           finally
@@ -1502,7 +1495,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     this.triggerTypeSelect.setEnabled( aEnable );
     this.ratioSlider.setEnabled( aEnable );
 
-    for ( int stage = 0; stage < LogicSnifferConfig.TRIGGER_STAGES; stage++ )
+    for ( int stage = 0; stage < MAX_COMPLEX_TRIGGER_STAGES; stage++ )
     {
       final boolean stageEnabled = aEnable && ( stage < aAvailableTriggerStages );
       for ( int i = 0; i < MAX_CHANNELS; i++ )
@@ -1566,7 +1559,7 @@ public final class LogicSnifferConfigDialog extends JDialog implements Configura
     final boolean triggerEnabled = this.triggerEnable.isSelected();
     if ( triggerEnabled )
     {
-      for ( int stage = 0; result && ( stage < LogicSnifferConfig.TRIGGER_STAGES ); stage++ )
+      for ( int stage = 0; result && ( stage < MAX_COMPLEX_TRIGGER_STAGES ); stage++ )
       {
         final Integer delay = getNumericValue( this.triggerDelay[stage] );
 

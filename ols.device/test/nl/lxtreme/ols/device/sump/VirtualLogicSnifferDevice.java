@@ -301,6 +301,8 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
         delayCount = ( ( this.sizeValue >> 16 ) & 0xFFFF ) << 2;
       }
       setReadAndDelay( readCount, delayCount );
+      
+      System.out.printf("Writing %d samples...%n", readCount);
 
       this.sampleProvider.write( this.os, this.sampleWidth, readCount, this.rleMode, this.ddrMode );
     }
@@ -374,7 +376,7 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
   /**
    * Creates a new VirtualLogicSnifferDevice instance.
    */
-  public VirtualLogicSnifferDevice( final LogicSnifferConfig aConfig ) throws IOException
+  public VirtualLogicSnifferDevice( final SumpConfig aConfig ) throws IOException
   {
     this( aConfig, new SimpleSampleProvider() );
   }
@@ -382,10 +384,9 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
   /**
    * Creates a new VirtualLogicSnifferDevice instance.
    */
-  public VirtualLogicSnifferDevice( final LogicSnifferConfig aConfig, final SampleProvider aSampleProvider )
-      throws IOException
+  public VirtualLogicSnifferDevice( final SumpConfig aConfig, final SampleProvider aSampleProvider ) throws IOException
   {
-    super( aConfig, null /* aConnection */, new DeviceProfileManager(), new NullAcquisitionProgressListener() );
+    super( aConfig, null /* aConnection */, new NullAcquisitionProgressListener() );
 
     // Quite a lot of data can be pumped from this device, so we need some room
     // for it to store it all...
@@ -406,10 +407,9 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
   /**
    * @return
    */
-  public DeviceProfile addDeviceProfile( final String aType, final String aMetadataKeys )
-      throws org.osgi.service.cm.ConfigurationException
+  public static DeviceProfile createDeviceProfile( final String aType, final String aMetadataKeys, final boolean aLastSampleFirst )
   {
-    Properties properties = new Properties();
+    Map<String, String> properties = new HashMap<String, String>();
     properties.put( DEVICE_CAPTURECLOCK, "INTERNAL" );
     properties.put( DEVICE_CAPTURESIZE_BOUND, "false" );
     properties.put( DEVICE_CAPTURESIZES, "4096,2048,1024,512,256,128,64,32,16" );
@@ -423,21 +423,21 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
     properties.put( DEVICE_FEATURE_RLE, "true" );
     properties.put( DEVICE_FEATURE_TEST_MODE, "true" );
     properties.put( DEVICE_FEATURE_TRIGGERS, "true" );
+    properties.put( DEVICE_FEATURE_COMBINED_READDELAY_COUNT, "true" );
     properties.put( DEVICE_INTERFACE, "SERIAL" );
     properties.put( DEVICE_METADATA_KEYS, aMetadataKeys );
     properties.put( DEVICE_OPEN_PORT_DELAY, "0" );
     properties.put( DEVICE_OPEN_PORT_DTR, "false" );
     properties.put( DEVICE_RECEIVE_TIMEOUT, "12" );
-    properties.put( DEVICE_SAMPLE_REVERSE_ORDER, "true" );
+    properties.put( DEVICE_LAST_SAMPLE_FIRST, Boolean.toString( aLastSampleFirst ) );
     properties.put( DEVICE_SAMPLERATES, "1000000" );
     properties.put( DEVICE_SUPPORTS_DDR, "true" );
+    properties.put( DEVICE_TRIGGER_HP165XX, "false" );
     properties.put( DEVICE_TRIGGER_COMPLEX, "true" );
     properties.put( DEVICE_TRIGGER_STAGES, "4" );
     properties.put( DEVICE_TYPE, aType );
-    // Update the properties of a 'virtual' PID...
-    getDeviceProfileManager().updated( "PID-" + aType, properties );
 
-    return getDeviceProfileManager().getProfile( aType );
+    return new DeviceProfile( properties );
   }
 
   /**
@@ -454,13 +454,13 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
     final int[] actualValues = aResult.getValues();
     Assert.assertArrayEquals( "Sample values not as expected?!", expectedValues, actualValues );
 
-    final long[] expectedTimestamps = new long[] { 0L, aExpectedLength };
+    final long[] expectedTimestamps = new long[] { 0L, aExpectedLength - 1 };
     // Arrays.fill( expectedTimestamps, 0L );
 
     final long[] actualTimestamps = aResult.getTimestamps();
     Assert.assertArrayEquals( "Timestamps not as expected?!", expectedTimestamps, actualTimestamps );
 
-    assertEquals( "Absolute length not equal?!", aExpectedLength, aResult.getAbsoluteLength() );
+    assertEquals( "Absolute length not equal?!", aExpectedLength - 1, aResult.getAbsoluteLength() );
   }
 
   /**
@@ -488,9 +488,9 @@ public class VirtualLogicSnifferDevice extends LogicSnifferAcquisitionTask
    */
   public void assertSampleRate( final int aExpectedSampleRate )
   {
-    final LogicSnifferConfig config = getConfig();
+    final SumpConfig config = getConfig();
 
-    int clock = config.getClockspeed();
+    int clock = 100000000;
     if ( config.isDoubleDataRateEnabled() )
     {
       clock *= 2;

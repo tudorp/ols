@@ -16,19 +16,32 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
  *
  * Copyright (C) 2006-2010 Michael Poppitz, www.sump.org
- * Copyright (C) 2010 J.W. Janssen, www.lxtreme.nl
+ * Copyright (C) 2010-2013 J.W. Janssen, www.lxtreme.nl
  */
-package nl.lxtreme.ols.device.sump.sampleprocessor;
+package nl.lxtreme.ols.device.demo;
 
 
 /**
- * Denotes a sample processor, which performs a transformation function (such as
- * uncompressing) on a set of samples.
+ * Constants used by the demo device.
  */
-public interface SampleProcessor
+public interface DemoConstants
 {
+  // CONSTANTS
+
   /**
-   * Processes the samples.
+   * The number of channels to return. The value should represent a positive,
+   * non-zero, {@link Integer} value.
    */
-  void process();
+  String KEY_CHANNEL_COUNT = "demo.channelCount";
+  /**
+   * The number of samples to return. The value should represent a positive,
+   * non-zero, {@link Integer} value.
+   */
+  String KEY_SAMPLE_COUNT = "demo.sampleCount";
+  /**
+   * The name of the generator to use to generate the sample data. The value
+   * should represent a {@link String} value.
+   */
+  String KEY_GENERATOR_NAME = "demo.generatorName";
+
 }

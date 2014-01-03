@@ -57,12 +57,16 @@ public interface Constants
   public static final String DEVICE_FEATURE_RLE = "device.feature.rle";
   /** Whether or not a testing mode is supported. */
   public static final String DEVICE_FEATURE_TEST_MODE = "device.feature.testmode";
+  /** Whether or not the read/delay counters are combined into one value. */
+  public static final String DEVICE_FEATURE_COMBINED_READDELAY_COUNT = "device.feature.combinedReadDelayCount";
   /** Whether or not triggers are supported */
   public static final String DEVICE_FEATURE_TRIGGERS = "device.feature.triggers";
   /** The number of trigger stages */
   public static final String DEVICE_TRIGGER_STAGES = "device.trigger.stages";
   /** Whether or not "complex" triggers are supported */
   public static final String DEVICE_TRIGGER_COMPLEX = "device.trigger.complex";
+  /** Whether or not "HP165xx"-style triggers are supported. */
+  public static final String DEVICE_TRIGGER_HP165XX = "device.trigger.hp165xx";
   /** The total number of channels usable for capturing */
   public static final String DEVICE_CHANNEL_COUNT = "device.channel.count";
   /**
@@ -90,7 +94,7 @@ public interface Constants
    * In which order are samples sent back from the device? If <code>true</code>
    * then last sample first, if <code>false</code> then first sample first.
    */
-  public static final String DEVICE_SAMPLE_REVERSE_ORDER = "device.samples.reverseOrder";
+  public static final String DEVICE_LAST_SAMPLE_FIRST = "device.samples.lastSampleFirst";
   /**
    * In case of a serial port, does the DTR-line need to be high (= true) or low
    * (= false)?

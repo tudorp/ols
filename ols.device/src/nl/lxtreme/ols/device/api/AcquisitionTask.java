@@ -31,6 +31,7 @@ import nl.lxtreme.ols.task.execution.*;
  * acquire data from the device and return that data in the form of an
  * {@link AcquisitionData} object.
  */
+@Deprecated
 public interface AcquisitionTask extends Task<AcquisitionData>
 {
   // No additional methods

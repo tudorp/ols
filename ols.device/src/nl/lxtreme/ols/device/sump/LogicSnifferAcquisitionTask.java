@@ -27,17 +27,15 @@ import java.util.logging.*;
 import javax.microedition.io.*;
 
 import nl.lxtreme.ols.common.acquisition.*;
-import nl.lxtreme.ols.device.api.*;
-import nl.lxtreme.ols.device.sump.profile.*;
 import nl.lxtreme.ols.device.sump.protocol.*;
-import nl.lxtreme.ols.device.sump.sampleprocessor.*;
+import nl.lxtreme.ols.task.execution.*;
 
 
 /**
  * Provides an acquisition task that uses the SUMP protocol for talking with a
  * LogicSniffer device on a serial/USB port.
  */
-public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, AcquisitionTask
+public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Task<AcquisitionData>
 {
   // CONSTANTS
 
@@ -45,26 +43,23 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
 
   // VARIABLES
 
-  private final DeviceProfileManager deviceProfileManager;
   private final AcquisitionProgressListener acquisitionProgressListener;
-  private final LogicSnifferConfig config;
+  private final SumpConfig config;
 
   private StreamConnection connection;
   private SumpResultReader inputStream;
   private SumpCommandWriter outputStream;
-  private int trigcount;
 
   // CONSTRUCTORS
 
   /**
    * Creates a new LogicSnifferDevice instance.
    */
-  public LogicSnifferAcquisitionTask( final LogicSnifferConfig aConfig, final StreamConnection aConnection,
-      final DeviceProfileManager aDeviceProfileManager, final AcquisitionProgressListener aProgressListener )
+  public LogicSnifferAcquisitionTask( SumpConfig aConfig, StreamConnection aConnection,
+      AcquisitionProgressListener aProgressListener )
   {
     this.config = aConfig;
     this.connection = aConnection;
-    this.deviceProfileManager = aDeviceProfileManager;
     this.acquisitionProgressListener = aProgressListener;
   }
 
@@ -85,73 +80,25 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
   @Override
   public AcquisitionData call() throws IOException, InterruptedException
   {
-    LOG.info( "Starting capture ..." );
-
-    // Opens the device...
-    open();
-
-    // First try to find the logic sniffer itself...
-    detectDevice();
-
-    // check if data needs to be multiplexed
-    final int channelCount = this.config.getChannelCount();
-    if ( channelCount <= 0 )
+    try
     {
-      throw new InternalError( "Internal error: did not obtain correct number of channels (" + channelCount + ")?!" );
+      // Opens the device...
+      open();
+
+      // First try to find the logic sniffer itself...
+      detectDevice();
+
+      // Setup/configure the device with the UI-settings...
+      configureAndArmDevice();
+
+      // read all samples
+      return readSampleData();
     }
-
-    final int sampleCount = this.config.getSampleCount();
-    if ( sampleCount <= 0 )
+    finally
     {
-      throw new InternalError( "Internal error: did not obtain correct number of samples (" + sampleCount + ")?!" );
+      // Close the connection...
+      close();
     }
-
-    // Setup/configure the device with the UI-settings...
-    configureAndArmDevice();
-
-    // read all samples
-    int[] samples = readSamples( this.config.getEnabledGroupCount(), sampleCount );
-
-    if ( samples.length < sampleCount )
-    {
-      LOG.log( Level.INFO, "Only {0} samples read!", Integer.valueOf( samples.length ) );
-    }
-    else
-    {
-      LOG.log( Level.FINE, "{0} samples read. Starting post processing...", Integer.valueOf( sampleCount ) );
-    }
-
-    final AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.setSampleRate( this.config.getSampleRate() );
-    // Issue #98: use the *enabled* channel count, not the total channel
-    // count...
-    builder.setChannelCount( this.config.getEnabledChannelsCount() );
-    builder.setEnabledChannelMask( this.config.getEnabledChannelsMask() );
-
-    final SampleProcessorCallback callback = new SampleProcessorCallback()
-    {
-      public void addValue( final int aSampleValue, final long aTimestamp )
-      {
-        builder.addSample( aTimestamp, aSampleValue );
-      }
-
-      public void ready( final long aAbsoluteLength, final long aTriggerPosition )
-      {
-        builder.setAbsoluteLength( aAbsoluteLength );
-
-        if ( LogicSnifferAcquisitionTask.this.config.isTriggerEnabled() )
-        {
-          builder.setTriggerPosition( aTriggerPosition );
-        }
-      }
-    };
-    // Process the actual samples...
-    createSampleProcessor( sampleCount, samples, callback ).process();
-
-    // Close the connection...
-    close();
-
-    return builder.build();
   }
 
   /**
@@ -166,7 +113,11 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
    */
   void configureAndArmDevice() throws IOException
   {
-    this.trigcount = this.outputStream.writeDeviceConfiguration();
+    LOG.info( "Configuring device ..." );
+
+    this.outputStream.writeDeviceConfiguration();
+
+    LOG.info( "Arming device and starting capture ..." );
 
     // We're ready to process the samples from the device...
     this.outputStream.writeCmdRun();
@@ -189,23 +140,27 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
     {
       try
       {
+        // Make sure to flush any pending information we did not read for some
+        // reason...
+        if ( this.inputStream != null )
+        {
+          this.inputStream.flush();
+        }
+
         // try to make sure device is reset...
         if ( this.outputStream != null )
         {
-          // XXX it seems that after a RLE abort command, the OLS device no
-          // longer is able to process a full 5x reset command. However, we're
-          // also resetting the thing right after we've started an acquisition,
-          // so it might not be that bad...
           this.outputStream.writeCmdReset();
         }
       }
-      catch ( final IOException exception )
+      catch ( InterruptedIOException exception )
       {
-        // Make sure to handle IO-interrupted exceptions properly!
-        if ( !handleInterruptedException( exception ) )
-        {
-          LOG.log( Level.WARNING, "Detaching failed!", exception );
-        }
+        // Ok; we're closing anyway, so lets continue for now...
+        LOG.log( Level.WARNING, "Closing of device was interrupted!", exception );
+      }
+      catch ( IOException exception )
+      {
+        LOG.log( Level.WARNING, "Closing of device failed!", exception );
       }
       finally
       {
@@ -235,21 +190,9 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
    * 
    * @return a device configuration, never <code>null</code>.
    */
-  protected final LogicSnifferConfig getConfig()
+  protected SumpConfig getConfig()
   {
     return this.config;
-  }
-
-  /**
-   * Finds the device profile manager.
-   * 
-   * @return a device profile manager instance, never <code>null</code>.
-   * @throws IllegalArgumentException
-   *           in case the device profile manager could not be found/obtained.
-   */
-  protected DeviceProfileManager getDeviceProfileManager()
-  {
-    return this.deviceProfileManager;
   }
 
   /**
@@ -278,6 +221,8 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
 
     try
     {
+      LOG.fine( "Opening connection to device ..." );
+
       if ( conn == null )
       {
         throw new IOException( "Failed to open a valid connection!" );
@@ -290,16 +235,12 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
       // input stream. See issue #34.
       this.inputStream.flush();
     }
-    catch ( final Exception exception )
+    catch ( InterruptedIOException exception )
     {
-      LOG.log( Level.WARNING, "Failed to open connection! Possible reason: " + exception.getMessage() );
+      LOG.log( Level.WARNING, "Failed to open connection! I/O was interrupted!" );
       LOG.log( Level.FINE, "Detailed stack trace:", exception );
 
-      // Make sure to handle IO-interrupted exceptions properly!
-      if ( !handleInterruptedException( exception ) )
-      {
-        throw new IOException( "Failed to open connection! Possible reason: " + exception.getMessage() );
-      }
+      Thread.currentThread().interrupt();
     }
   }
 
@@ -319,32 +260,6 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
   }
 
   /**
-   * @param aSampleCount
-   *          the actual number of samples to process;
-   * @param aSampleValues
-   *          the sample values to process;
-   * @param aCallback
-   *          the processor callback to use.
-   * @return a sample processor instance, never <code>null</code>.
-   */
-  private SampleProcessor createSampleProcessor( final int aSampleCount, final int[] aSampleValues,
-      final SampleProcessorCallback aCallback )
-  {
-    final SampleProcessor processor;
-    if ( this.config.isRleEnabled() )
-    {
-      LOG.log( Level.INFO, "Decoding Run Length Encoded data, sample count: {0}", Integer.valueOf( aSampleCount ) );
-      processor = new RleDecoder( this.config, aSampleValues, this.trigcount, aCallback );
-    }
-    else
-    {
-      LOG.log( Level.INFO, "Decoding unencoded data, sample count: {0}", Integer.valueOf( aSampleCount ) );
-      processor = new EqualityFilter( this.config, aSampleValues, this.trigcount, aCallback );
-    }
-    return processor;
-  }
-
-  /**
    * Tries to detect the LogicSniffer device.
    * 
    * @return the device's metadata, never <code>null</code>.
@@ -354,6 +269,8 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
    */
   private void detectDevice() throws IOException
   {
+    LOG.fine( "Detecting device ..." );
+
     int tries = 3;
     int id = -1;
     do
@@ -378,73 +295,100 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
         id = -1;
         tries = -1;
       }
-      catch ( IOException exception )
+      catch ( InterruptedIOException exception )
       {
-        /* don't care */
-        id = -1;
-
         // Make sure to handle IO-interrupted exceptions properly!
-        if ( !handleInterruptedException( exception ) )
-        {
-          LOG.log( Level.INFO, "I/O exception!", exception );
-        }
+        Thread.currentThread().interrupt();
       }
     }
     while ( !Thread.currentThread().isInterrupted() && ( tries-- > 0 ) && ( id < 0 ) );
 
     if ( id == SLA_V0 )
     { // SLA0
+      LOG.fine( "Obsolete device 'SLA0' found ..." );
+
       throw new IOException( "Device is obsolete. Please upgrade firmware." );
     }
     else if ( id != SLA_V1 )
     { // SLA1
+      LOG.fine( "Unknown device (" + Integer.toHexString( id ) + ") found ..." );
+
       throw new IOException( "Device not found!" );
     }
-  }
 
-  private boolean handleInterruptedException( Exception aException )
-  {
-    if ( aException instanceof InterruptedIOException )
-    {
-      Thread.currentThread().interrupt();
-      return true;
-    }
-    return false;
+    LOG.fine( "SUMP-compatible device 'SLA1' found ..." );
   }
 
   /**
    * Reads all (or as many as possible) samples from the OLS device.
    * 
-   * @param aEnabledGroupCount
-   *          the number of enabled groups (denotes the number of bytes for one
-   *          sample);
-   * @param aSampleCount
-   *          the number of samples to read.
-   * @return the read samples, normalized to match the layout of the enabled
-   *         groups.
+   * @return the read sample data, never <code>null</code>.
    * @throws IOException
    *           in case of I/O problems;
    * @throws InterruptedException
    *           in case the current thread was interrupted.
    */
-  private int[] readSamples( final int aEnabledGroupCount, int aSampleCount ) throws IOException, InterruptedException
+  private AcquisitionData readSampleData() throws IOException, InterruptedException
   {
-    final int length = aEnabledGroupCount * aSampleCount;
+    LOG.fine( "Awaiting data and processing sample information ..." );
+
+    final int length = this.config.getEnabledGroupCount() * this.config.getSampleCount();
     final byte[] rawData = new byte[length];
+
+    boolean cancelled = false;
 
     try
     {
       int offset = 0;
+      int zerosRead = 0;
       int count = length;
-      while ( !Thread.currentThread().isInterrupted() && ( offset >= 0 ) && ( offset < length ) )
+
+      while ( ( offset >= 0 ) && ( offset < length ) )
       {
         int read = this.inputStream.readRawData( rawData, offset, count );
+        // check whether we're interrupted, and let the interrupted state be
+        // cleared...
+        if ( Thread.interrupted() )
+        {
+          // Check what we need to do...
+          if ( cancelled )
+          {
+            // Already cancelled, break out the loop...
+            Thread.currentThread().interrupt();
+            break;
+          }
+          else
+          {
+            if ( this.config.isRleEnabled() )
+            {
+              this.outputStream.writeCmdFinishNow();
+            }
+            else
+            {
+              // Restore the interrupted flag...
+              Thread.currentThread().interrupt();
+              break;
+            }
+            cancelled = true;
+          }
+        }
+
         if ( read < 0 )
         {
           throw new EOFException();
         }
+        else if ( read == 0 )
+        {
+          LOG.log( Level.INFO, "Read zero bytes?! Stats = [{0}/{1}/{2}].", new Object[] { offset, count, zerosRead } );
+
+          if ( ++zerosRead == 10000 )
+          {
+            throw new IOException( "Device did not respond with any data within valid time bound!" );
+          }
+        }
         else
         {
+          zerosRead = 0;
           count -= read;
           offset += read;
         }
@@ -452,19 +396,12 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
         this.acquisitionProgressListener.acquisitionInProgress( ( 100 * offset ) / length );
       }
     }
-    catch ( IOException exception )
+    catch ( InterruptedIOException exception )
     {
-      // Make sure to handle IO-interrupted exceptions properly!
-      if ( !handleInterruptedException( exception ) )
-      {
-        throw exception;
-      }
+      Thread.currentThread().interrupt();
     }
     finally
     {
-      // Make sure we leave the device in a correct state...
-      this.outputStream.writeCmdReset();
-
       this.acquisitionProgressListener.acquisitionInProgress( 100 );
     }
 
@@ -474,34 +411,6 @@ public class LogicSnifferAcquisitionTask implements SumpProtocolConstants, Acqui
       throw new InterruptedException();
     }
 
-    final int groupCount = this.config.getGroupCount();
-
-    // Normalize the raw data into the sample data, as expected...
-    int[] samples = new int[aSampleCount];
-    for ( int i = samples.length - 1, j = 0; i >= 0; i-- )
-    {
-      for ( int g = 0; g < groupCount; g++ )
-      {
-        if ( this.config.isGroupEnabled( g ) )
-        {
-          samples[i] |= ( ( rawData[j++] & 0xff ) << ( 8 * g ) );
-        }
-      }
-    }
-
-    // In case the device sends its samples in "reverse" order, we need to
-    // revert it now, before processing them further...
-    if ( this.config.isSamplesInReverseOrder() )
-    {
-      for ( int left = 0, right = samples.length - 1; left < right; left++, right-- )
-      {
-        // exchange the first and last
-        int temp = samples[left];
-        samples[left] = samples[right];
-        samples[right] = temp;
-      }
-    }
-
-    return samples;
+    return new SumpAcquisitionDataBuilder( this.config ).build( rawData, this.acquisitionProgressListener );
   }
 }

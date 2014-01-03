@@ -37,14 +37,19 @@ public class AcquisitionDataBuilderTest
 
   private static void assertChannelGroups( ChannelGroup[] aChannelGroups, int[][] aIndices )
   {
+    assertEquals( aIndices.length, aChannelGroups.length );
+
     int idx = 0;
     for ( ChannelGroup channelGroup : aChannelGroups )
     {
       assertEquals( idx, channelGroup.getIndex() );
       int[] groupIndices = aIndices[idx++];
 
+      Channel[] channels = channelGroup.getChannels();
+      assertEquals( groupIndices.length, channels.length );
+
       int chIdx = 0;
-      for ( Channel ch : channelGroup.getChannels() )
+      for ( Channel ch : channels )
       {
         assertEquals( groupIndices[chIdx++], ch.getIndex() );
       }
@@ -69,14 +74,22 @@ public class AcquisitionDataBuilderTest
     }
   }
 
-  /**
-   * Tests that we cannot add a channel to an unknown group.
-   */
-  @Test( expected = IllegalArgumentException.class )
-  public void testAddChannelToUnknownGroupFail()
+  private static void assertValues( int[] aValues, int... aExpected )
   {
-    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.addChannelToGroup( 0, 1 );
+    assertEquals( aExpected.length, aValues.length );
+    for ( int i = 0; i < aExpected.length; i++ )
+    {
+      assertEquals( "Value @ " + i, aExpected[i], aValues[i] );
+    }
+  }
+
+  private static void assertTimestamps( long[] aTimestamps, long... aExpected )
+  {
+    assertEquals( aExpected.length, aTimestamps.length );
+    for ( int i = 0; i < aExpected.length; i++ )
+    {
+      assertEquals( "Timestamp @ " + i, aExpected[i], aTimestamps[i] );
+    }
   }
 
   /**
@@ -86,8 +99,8 @@ public class AcquisitionDataBuilderTest
   public void testAddDuplicateChannelGroupFail()
   {
     AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.addChannelGroup( 0, "a" );
-    builder.addChannelGroup( 0, "a" ); // should fail...
+    builder.add( builder.createChannelGroup().setIndex( 0 ) );
+    builder.add( builder.createChannelGroup().setIndex( 0 ) ); // should fail!
   }
 
   /**
@@ -97,34 +110,108 @@ public class AcquisitionDataBuilderTest
   public void testAddDuplicateChannelToOtherGroupFail()
   {
     AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.addChannelGroup( 0, "a" );
-    builder.addChannelGroup( 1, "b" );
-    builder.addChannelToGroup( 0, 0 );
-    builder.addChannelToGroup( 0, 1 ); // should fail...
+    builder.add( builder.createChannelGroup().setIndex( 0 ).addChannel( 0, 1 ) );
+    builder.add( builder.createChannelGroup().setIndex( 1 ).addChannel( 1 ) ); // should
+                                                                               // fail!
   }
 
   /**
-   * Tests that we cannot add a channel twice to a group.
-   */
-  @Test( expected = IllegalArgumentException.class )
-  public void testAddDuplicateChannelToSameGroupFail()
-  {
-    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.addChannelGroup( 0, "a" );
-    builder.addChannelToGroup( 0, 0 );
-    builder.addChannelToGroup( 0, 0 ); // should fail...
-  }
-
-  /**
-   * Tests that we can add a sample.
+   * Tests that we can add samples starting at timestamp 0L.
    */
   @Test
-  public void testAddSampleOk()
+  public void testAddSamplesStartingAtTimeZeroOk()
   {
     AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
     builder.addSample( 0L, 1 );
+    builder.addSample( 1L, 1 );
+    builder.addSample( 2L, 1 );
+    builder.addSample( 3L, 1 );
+
+    AcquisitionData data = builder.build();
+    assertValues( data.getValues(), 1, 1 );
+    assertTimestamps( data.getTimestamps(), 0L, 3L );
+    assertEquals( 3L, data.getAbsoluteLength() );
+  }
+
+  /**
+   * Tests that we can add samples starting at timestamp 0L.
+   */
+  @Test
+  public void testAddSamplesWithDuplicatesOk()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
     builder.addSample( 0L, 1 );
-    builder.addSample( 1L, 2 );
+    builder.addSample( 1L, 1 );
+    builder.addSample( 2L, 1 );
+    builder.addSample( 3L, 0 );
+    builder.addSample( 4L, 1 );
+    builder.addSample( 5L, 1 );
+    builder.addSample( 6L, 1 );
+    builder.addSample( 7L, 1 );
+    builder.addSample( 8L, 0 );
+
+    AcquisitionData data = builder.build();
+    assertValues( data.getValues(), 1, 0, 1, 0 );
+    assertTimestamps( data.getTimestamps(), 0L, 3L, 7L, 8L );
+    assertEquals( 8L, data.getAbsoluteLength() );
+  }
+
+  /**
+   * Tests that we can add samples starting at timestamp 1L.
+   */
+  @Test
+  public void testAddSamplesStartingAtTimeOneOk()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
+    builder.addSample( 1L, 1 );
+    builder.addSample( 2L, 1 );
+    builder.addSample( 3L, 1 );
+    builder.addSample( 4L, 1 );
+
+    AcquisitionData data = builder.build();
+    assertEquals( 4L, data.getAbsoluteLength() );
+    assertValues( data.getValues(), 1, 1 );
+    assertTimestamps( data.getTimestamps(), 1L, 4L );
+  }
+
+  /**
+   * Tests that the builder correctly tracks the "last" timestamp.
+   */
+  @Test
+  public void testAddSamplesCorrectlyPicksUpLastTimestamp()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
+    builder.addSample( 1, 1 );
+    builder.addSample( 2, 0 );
+    builder.addSample( 3, 1 );
+
+    AcquisitionData data = builder.build();
+    assertEquals( 3L, data.getAbsoluteLength() );
+    assertValues( data.getValues(), 1, 0, 1 );
+    assertTimestamps( data.getTimestamps(), 1, 2, 3 );
+  }
+
+  /**
+   * Tests that the builder correctly tracks the "last" timestamp, even when
+   * samples are added in reverse order.
+   */
+  @Test
+  public void testAddSamplesInReverseCorrectlyPicksUpLastTimestamp()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
+    builder.addSample( 3, 1 );
+    builder.addSample( 2, 0 );
+    builder.addSample( 1, 1 );
+
+    AcquisitionData data = builder.build();
+    assertEquals( 3L, data.getAbsoluteLength() );
+    assertValues( data.getValues(), 1, 0, 1 );
+    assertTimestamps( data.getTimestamps(), 1, 2, 3 );
   }
 
   /**
@@ -137,37 +224,44 @@ public class AcquisitionDataBuilderTest
     builder.addSample( -1L, 1 ); // should fail...
   }
 
-  /**
-   * Tests creating of {@link AcquisitionData} with 16 channels.
-   */
   @Test
-  public void testBuild16BitsDataWithChannelGroupsOk()
+  public void testCreateImplicitChannelGroupWithAllChannelsEnabled()
   {
     AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.setChannelCount( 16 );
-    builder.setSampleRate( 1 );
-    builder.addChannelGroup( 0, "Group A" );
-    builder.addChannelToGroup( 3, 0 );
-    builder.addChannelToGroup( 1, 0 );
-    builder.addChannelToGroup( 0, 0 );
-    builder.addChannelToGroup( 2, 0 );
-    builder.addChannelGroup( 1, "Group B" );
-    builder.addChannelToGroup( 4, 1 );
-    builder.addChannelToGroup( 6, 1 );
-    builder.addChannelToGroup( 5, 1 );
-    builder.addChannelToGroup( 7, 1 );
+    builder.setChannelCount( 8 );
+    builder.setEnabledChannelMask( 0xFF );
 
     AcquisitionData data = builder.build();
-    assertNotNull( data );
-
-    Channel[] channels = data.getChannels();
-    assertEquals( 16, channels.length );
-    assertChannels( channels );
 
     ChannelGroup[] channelGroups = data.getChannelGroups();
-    assertChannelGroups( channelGroups,
-        new int[][] { { 3, 1, 0, 2 }, { 4, 6, 5, 7 }, { 8, 9, 10, 11, 12, 13, 14, 15 } } );
-    assertEquals( 3, channelGroups.length );
+    assertEquals( 1, channelGroups.length );
+    assertChannelGroups( channelGroups, new int[][] { { 0, 1, 2, 3, 4, 5, 6, 7 } } );
+
+    builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
+    builder.setEnabledChannelMask( 0x5555 );
+
+    data = builder.build();
+
+    channelGroups = data.getChannelGroups();
+    assertEquals( 8, data.getChannelCount() );
+    assertEquals( 1, channelGroups.length );
+    assertChannelGroups( channelGroups, new int[][] { { 0, 2, 4, 6, 8, 10, 12, 14 } } );
+  }
+
+  @Test
+  public void testCreateImplicitChannelGroupWithFewChannelsEnabled()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 8 );
+    builder.setEnabledChannelMask( 0x55 );
+
+    AcquisitionData data = builder.build();
+
+    ChannelGroup[] channelGroups = data.getChannelGroups();
+    assertEquals( 4, data.getChannelCount() );
+    assertEquals( 1, channelGroups.length );
+    assertChannelGroups( channelGroups, new int[][] { { 0, 2, 4, 6 } } );
   }
 
   /**
@@ -179,16 +273,8 @@ public class AcquisitionDataBuilderTest
     AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
     builder.setChannelCount( 8 );
     builder.setSampleRate( 1 );
-    builder.addChannelGroup( 0, "Group A" );
-    builder.addChannelToGroup( 3, 0 );
-    builder.addChannelToGroup( 1, 0 );
-    builder.addChannelToGroup( 0, 0 );
-    builder.addChannelToGroup( 2, 0 );
-    builder.addChannelGroup( 1, "Group B" );
-    builder.addChannelToGroup( 4, 1 );
-    builder.addChannelToGroup( 6, 1 );
-    builder.addChannelToGroup( 5, 1 );
-    builder.addChannelToGroup( 7, 1 );
+    builder.add( builder.createChannelGroup().setIndex( 0 ).setName( "Group A" ).addChannel( 3, 1, 0, 2 ) );
+    builder.add( builder.createChannelGroup().setIndex( 1 ).setName( "Group B" ).addChannel( 4, 6, 5, 7 ) );
 
     AcquisitionData data = builder.build();
     assertNotNull( data );
@@ -206,17 +292,63 @@ public class AcquisitionDataBuilderTest
     // cut out the MSB completely...
     builder.setChannelCount( 7 );
     builder.setEnabledChannelMask( 0x7F );
-    
+
     AcquisitionData otherData = builder.build();
     assertNotNull( otherData );
 
     channels = otherData.getChannels();
+    assertEquals( 7, otherData.getChannelCount() );
     assertEquals( 7, channels.length );
     assertChannels( channels );
 
     channelGroups = otherData.getChannelGroups();
     assertChannelGroups( channelGroups, new int[][] { { 3, 1, 0, 2 }, { 4, 6, 5 } } );
-    assertEquals( 2, channelGroups.length );
+  }
+
+  /**
+   * Tests creating of {@link AcquisitionData} with 16 channels.
+   */
+  @Test
+  public void testBuild16BitsDataWithChannelGroupsOk()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 16 );
+    builder.setSampleRate( 1 );
+    builder.add( builder.createChannelGroup().setIndex( 0 ).setName( "Group A" ).addChannel( 3, 1, 0, 2 ) );
+    builder.add( builder.createChannelGroup().setIndex( 1 ).setName( "Group B" ).addChannel( 4, 6, 5, 7 ) );
+
+    AcquisitionData data = builder.build();
+
+    Channel[] channels = data.getChannels();
+    // Channel groups are leading, we only have defined 8 channels...
+    assertEquals( 8, data.getChannelCount() );
+    assertEquals( 8, channels.length );
+    assertChannels( channels );
+
+    ChannelGroup[] channelGroups = data.getChannelGroups();
+    assertChannelGroups( channelGroups, new int[][] { { 3, 1, 0, 2 }, { 4, 6, 5, 7 } } );
+  }
+
+  /**
+   * Tests creating of {@link AcquisitionData} with 16 channels.
+   */
+  @Test
+  public void testBuild16BitsDataWithoutChannelGroupsOk()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 16 );
+    builder.setSampleRate( 1 );
+
+    AcquisitionData data = builder.build();
+
+    Channel[] channels = data.getChannels();
+    // No channel groups are defined, we should have 16 channels...
+    assertEquals( 16, data.getChannelCount() );
+    assertEquals( 16, channels.length );
+    assertChannels( channels );
+
+    ChannelGroup[] channelGroups = data.getChannelGroups();
+    assertChannelGroups( channelGroups, new int[][] { { 0, 1, 2, 3, 4, 5, 6, 7 }, { 8, 9, 10, 11, 12, 13, 14, 15 } } );
   }
 
   /**
@@ -229,7 +361,7 @@ public class AcquisitionDataBuilderTest
     builder.setAbsoluteLength( 10 );
     builder.setChannelCount( 1 );
     builder.setSampleRate( 1 );
-    builder.setChannelLabel( 0, "aaa" );
+    builder.add( builder.createChannel().setIndex( 0 ).setLabel( "aaa" ) );
     builder.setCursorLabel( 1, "bbb" );
 
     AcquisitionData data = builder.build();
@@ -247,30 +379,6 @@ public class AcquisitionDataBuilderTest
     ChannelGroup[] channelGroups = data.getChannelGroups();
     assertEquals( 1, channelGroups.length );
     assertChannelGroups( channelGroups, new int[][] { { 0 } } );
-  }
-
-  /**
-   * Tests that we must supply a channel count.
-   */
-  @Test( expected = IllegalArgumentException.class )
-  public void testBuildWithoutChannelCountFail()
-  {
-    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-
-    builder.build(); // should fail.
-  }
-
-  /**
-   * Tests that we must supply a valid channel mask.
-   */
-  @Test( expected = IllegalArgumentException.class )
-  public void testBuildWithInvalidChannelMaskFail()
-  {
-    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
-    builder.setChannelCount( 1 );
-    builder.setEnabledChannelMask( 0 );
-
-    builder.build(); // should fail.
   }
 
   /**
@@ -313,7 +421,30 @@ public class AcquisitionDataBuilderTest
     assertChannels( channels, 8, 9, 10, 11, 12, 13, 14, 15 );
 
     ChannelGroup[] channelGroups = data.getChannelGroups();
-    assertEquals( 1, channelGroups.length );
     assertChannelGroups( channelGroups, new int[][] { { 8, 9, 10, 11, 12, 13, 14, 15 } } );
+  }
+
+  /**
+   * Tests that we must supply a valid channel mask.
+   */
+  @Test( expected = IllegalArgumentException.class )
+  public void testBuildWithInvalidChannelMaskFail()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+    builder.setChannelCount( 1 );
+    builder.setEnabledChannelMask( 0 );
+
+    builder.build(); // should fail.
+  }
+
+  /**
+   * Tests that we must supply a channel count.
+   */
+  @Test( expected = IllegalArgumentException.class )
+  public void testBuildWithoutChannelCountFail()
+  {
+    AcquisitionDataBuilder builder = new AcquisitionDataBuilder();
+
+    builder.build(); // should fail.
   }
 }

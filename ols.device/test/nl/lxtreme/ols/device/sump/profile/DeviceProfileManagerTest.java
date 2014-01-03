@@ -20,10 +20,13 @@
  */
 package nl.lxtreme.ols.device.sump.profile;
 
+import static nl.lxtreme.ols.device.sump.SumpConstants.*;
 import static nl.lxtreme.ols.device.sump.profile.Constants.*;
 import static org.junit.Assert.*;
 
 import java.util.*;
+
+import nl.lxtreme.ols.device.sump.*;
 
 import org.junit.*;
 import org.osgi.service.cm.*;
@@ -40,7 +43,7 @@ public class DeviceProfileManagerTest
    * Test method for {@link DeviceProfileManager#findProfile(String)}.
    */
   @Test
-  public void testFindProfile() throws ConfigurationException
+  public void testFindProfile() throws Exception
   {
     DeviceProfile profile = null;
 
@@ -49,25 +52,34 @@ public class DeviceProfileManagerTest
     manager.updated( "2", getMockedProperties( "OLS", "\"*\", \"Open Logic Sniffer v1.01\"" ) );
     manager.updated( "3", getMockedProperties( "BP", "\"BPv3\"" ) );
     manager.updated( "4", getMockedProperties( "SHRIMP", "\"Shrimp1.0\"" ) );
+    manager.updated( "5", getMockedProperties( "OLS-EXTRA", "\"(&(name=Open Logic Sniffer v1*)(fpgaVersion>=3.07))\"" ) );
 
-    profile = manager.findProfile( "Shrimp1.0" );
+    profile = manager.findProfile( createMockedMetadata( "Shrimp1.0" ) );
     assertNotNull( "Shrimp", profile );
     assertEquals( "SHRIMP", profile.getType() );
 
-    profile = manager.findProfile( "Open Logic Sniffer v1.01" );
+    profile = manager.findProfile( createMockedMetadata( "Open Logic Sniffer v1.01" ) );
     assertNotNull( "OLS", profile );
     assertEquals( "OLS", profile.getType() );
 
-    profile = manager.findProfile( "Sump" );
+    profile = manager.findProfile( createMockedMetadata( "Sump" ) );
     assertNotNull( "Sump", profile );
     assertEquals( "SUMP", profile.getType() );
 
-    profile = manager.findProfile( "BPv3" );
+    profile = manager.findProfile( createMockedMetadata( "BPv3" ) );
     assertNotNull( "BP", profile );
     assertEquals( "BP", profile.getType() );
 
-    profile = manager.findProfile( "My Unnamed Device" );
+    profile = manager.findProfile( createMockedMetadata( "My Unnamed Device" ) );
     assertNotNull( "Wildcard", profile );
+    assertEquals( "OLS", profile.getType() );
+
+    profile = manager.findProfile( createMockedMetadata( "Open Logic Sniffer v1.01", KEY_FPGA_VERSION, "3.07" ) );
+    assertNotNull( "Filter", profile );
+    assertEquals( "OLS-EXTRA", profile.getType() );
+
+    profile = manager.findProfile( createMockedMetadata( "Open Logic Sniffer v1.01", KEY_FPGA_VERSION, "3.06" ) );
+    assertNotNull( "Filter", profile );
     assertEquals( "OLS", profile.getType() );
   }
 
@@ -82,6 +94,19 @@ public class DeviceProfileManagerTest
 
     assertNotNull( manager.getProfile( "foo" ) );
     assertNull( manager.getProfile( "FOO" ) );
+  }
+
+  private DeviceMetadata createMockedMetadata( String aName, Object... aAdditionalProps )
+  {
+    DeviceMetadata result = new DeviceMetadata();
+    result.add( SumpConstants.KEY_DEVICE_NAME, aName );
+    for ( int i = 0; i < aAdditionalProps.length; i += 2 )
+    {
+      Integer key = ( Integer )aAdditionalProps[i];
+      Object value = aAdditionalProps[i + 1];
+      result.add( key, value );
+    }
+    return result;
   }
 
   /**
@@ -103,15 +128,17 @@ public class DeviceProfileManagerTest
     properties.put( DEVICE_FEATURE_RLE, "false" );
     properties.put( DEVICE_FEATURE_TEST_MODE, "true" );
     properties.put( DEVICE_FEATURE_TRIGGERS, "false" );
+    properties.put( DEVICE_FEATURE_COMBINED_READDELAY_COUNT, "true" );
     properties.put( DEVICE_INTERFACE, "SERIAL" );
     properties.put( DEVICE_METADATA_KEYS, aMetadataKeys );
     properties.put( DEVICE_OPEN_PORT_DELAY, "10" );
     properties.put( DEVICE_OPEN_PORT_DTR, "true" );
     properties.put( DEVICE_RECEIVE_TIMEOUT, "12" );
-    properties.put( DEVICE_SAMPLE_REVERSE_ORDER, "false" );
+    properties.put( DEVICE_LAST_SAMPLE_FIRST, "false" );
     properties.put( DEVICE_SAMPLERATES, "5,6,7" );
     properties.put( DEVICE_SUPPORTS_DDR, "true" );
     properties.put( DEVICE_TRIGGER_COMPLEX, "true" );
+    properties.put( DEVICE_TRIGGER_HP165XX, "false" );
     properties.put( DEVICE_TRIGGER_STAGES, "0" );
     properties.put( DEVICE_TYPE, aType );
     return properties;

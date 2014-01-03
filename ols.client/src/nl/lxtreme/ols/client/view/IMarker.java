@@ -16,27 +16,24 @@
  * 51 Franklin St, Fifth Floor, Boston, MA 02110, USA
  *
  * Copyright (C) 2006-2010 Michael Poppitz, www.sump.org
- * Copyright (C) 2010 J.W. Janssen, www.lxtreme.nl
+ * Copyright (C) 2010-2013 J.W. Janssen, www.lxtreme.nl
  */
-package nl.lxtreme.ols.device.sump.sampleprocessor;
+package nl.lxtreme.ols.client.view;
+
+
+import nl.lxtreme.ols.common.acquisition.*;
 
 
 /**
- * Provides a callback for the processed samples.
- * 
- * @see SampleProcessor
+ * Generalization of {@link Cursor} for visual markers in a view.
  */
-public interface SampleProcessorCallback
+public interface IMarker extends Cursor
 {
-  /**
-   * @param aSampleValue
-   * @param aTimestamp
-   */
-  void addValue( final int aSampleValue, final long aTimestamp );
+  // METHODS
 
   /**
-   * @param aAbsoluteLength
-   * @param aTriggerPosition
+   * @return <code>true</code> if this marker can be moved, <code>false</code>
+   *         otherwise.
    */
-  void ready( final long aAbsoluteLength, final long aTriggerPosition );
+  boolean isMoveable();
 }
