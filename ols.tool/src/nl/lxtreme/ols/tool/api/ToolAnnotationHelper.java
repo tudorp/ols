@@ -23,8 +23,10 @@ package nl.lxtreme.ols.tool.api;
 
 import static nl.lxtreme.ols.common.annotation.DataAnnotation.*;
 
+import java.awt.event.*;
 import java.util.*;
 
+import nl.lxtreme.ols.common.acquisition.*;
 import nl.lxtreme.ols.common.annotation.*;
 
 
@@ -42,7 +44,7 @@ public class ToolAnnotationHelper
   {
     // VARIABLES
 
-    private final int channelIdx;
+    private final Channel channel;
     private final String label;
 
     // CONSTRUCTORS
@@ -50,9 +52,9 @@ public class ToolAnnotationHelper
     /**
      * Creates a new {@link ChannelLabelAnnotation} instance.
      */
-    public ChannelLabelAnnotation( final int aChannelIdx, final String aLabel )
+    public ChannelLabelAnnotation( Channel aChannel, String aLabel )
     {
-      this.channelIdx = aChannelIdx;
+      this.channel = aChannel;
       this.label = aLabel;
     }
 
@@ -64,7 +66,7 @@ public class ToolAnnotationHelper
     @Override
     public int compareTo( final Annotation aOther )
     {
-      int result = ( this.channelIdx - aOther.getChannelIndex() );
+      int result = this.channel.compareTo( aOther.getChannel() );
       if ( result == 0 )
       {
         String d1 = getData();
@@ -78,9 +80,9 @@ public class ToolAnnotationHelper
      * {@inheritDoc}
      */
     @Override
-    public int getChannelIndex()
+    public Channel getChannel()
     {
-      return this.channelIdx;
+      return this.channel;
     }
 
     /**
@@ -109,7 +111,7 @@ public class ToolAnnotationHelper
   {
     // VARIABLES
 
-    private final int channelIdx;
+    private final Channel channel;
     private final long startTimestamp;
     private final long endTimestamp;
     private final Object data;
@@ -120,10 +122,10 @@ public class ToolAnnotationHelper
     /**
      * Creates a new {@link SampleDataAnnotation} instance.
      */
-    public SampleDataAnnotation( final int aChannelIdx, final long aStartTimestamp, final long aEndTimestamp,
-        final Object aText, final Map<String, Object> aProperties )
+    public SampleDataAnnotation( Channel aChannel, long aStartTimestamp, long aEndTimestamp, Object aText,
+        Map<String, Object> aProperties )
     {
-      this.channelIdx = aChannelIdx;
+      this.channel = aChannel;
       this.startTimestamp = aStartTimestamp;
       this.endTimestamp = aEndTimestamp;
       this.data = aText;
@@ -132,13 +134,18 @@ public class ToolAnnotationHelper
 
     // METHODS
 
+    private static boolean isSet( int aValue, int aBitMask )
+    {
+      return ( aValue & aBitMask ) != 0;
+    }
+
     /**
      * {@inheritDoc}
      */
     @Override
     public int compareTo( final Annotation aOther )
     {
-      int result = this.channelIdx - aOther.getChannelIndex();
+      int result = this.channel.compareTo( aOther.getChannel() );
       if ( result == 0 )
       {
         if ( aOther instanceof DataAnnotation )
@@ -167,9 +174,9 @@ public class ToolAnnotationHelper
      * {@inheritDoc}
      */
     @Override
-    public int getChannelIndex()
+    public Channel getChannel()
     {
-      return this.channelIdx;
+      return this.channel;
     }
 
     /**
@@ -206,6 +213,89 @@ public class ToolAnnotationHelper
     public long getStartTimestamp()
     {
       return this.startTimestamp;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String getText( int aOptions )
+    {
+      StringBuilder result = new StringBuilder();
+
+      Map<String, Object> props = getProperties();
+      Object desc = props.get( KEY_DESCRIPTION );
+      Object type = props.get( KEY_TYPE );
+
+      if ( TYPE_SYMBOL.equals( type ) )
+      {
+        if ( isSet( aOptions, OPTION_WITH_DESCRIPTION ) && ( desc != null ) )
+        {
+          result.append( desc ).append( " " );
+        }
+
+        Object data = getData();
+        if ( data instanceof Number )
+        {
+          int value = ( ( Number )data ).intValue();
+
+          if ( isSet( aOptions, OPTION_WITH_BIN_DATA ) )
+          {
+            result.append( "0b" ).append( Integer.toBinaryString( value ) ).append( " " );
+          }
+          if ( isSet( aOptions, OPTION_WITH_OCT_DATA ) )
+          {
+            result.append( "0" ).append( Integer.toOctalString( value ) ).append( " " );
+          }
+          if ( isSet( aOptions, OPTION_WITH_HEX_DATA ) )
+          {
+            result.append( "0x" ).append( Integer.toHexString( value ) ).append( " " );
+          }
+          if ( isSet( aOptions, OPTION_WITH_CHAR_DATA ) && isPrintableChar( ( char )value ) )
+          {
+            result.append( ( char )value ).append( " " );
+          }
+        }
+        else
+        {
+          if ( isSet( aOptions, OPTION_WITH_CHAR_DATA ) )
+          {
+            result.append( data ).append( " " );
+          }
+        }
+      }
+
+      if ( isSet( aOptions, OPTION_WITH_DESCRIPTION ) && ( TYPE_EVENT.equals( type ) || TYPE_ERROR.equals( type ) )
+          && ( desc != null ) )
+      {
+        result.append( desc ).append( " " );
+      }
+
+      if ( result.length() == 0 )
+      {
+        Object data = getData();
+        result.append( "(" ).append( data ).append( ")" );
+      }
+
+      return result.toString().trim();
+    }
+
+    /**
+     * Determines if the given character is a printable character or not.
+     * 
+     * @param aChar
+     *          the character to test.
+     * @return <code>true</code> if the given character is a printable one,
+     *         <code>false</code> otherwise.
+     */
+    private boolean isPrintableChar( final char aChar )
+    {
+      if ( Character.isISOControl( aChar ) || ( aChar == KeyEvent.CHAR_UNDEFINED ) )
+      {
+        return false;
+      }
+      Character.UnicodeBlock block = Character.UnicodeBlock.of( aChar );
+      return ( block != null ) && ( block != Character.UnicodeBlock.SPECIALS );
     }
   }
 
@@ -246,9 +336,10 @@ public class ToolAnnotationHelper
   public void addAnnotation( final int aChannelIdx, final long aStartTime, final long aEndTime, final Object aData,
       final Map<String, Object> aProperties )
   {
-    if ( isValidChannel( aChannelIdx ) )
+    Channel ch = getChannel( aChannelIdx );
+    if ( ch != null )
     {
-      this.context.addAnnotation( new SampleDataAnnotation( aChannelIdx, aStartTime, aEndTime, aData, aProperties ) );
+      this.context.addAnnotation( new SampleDataAnnotation( ch, aStartTime, aEndTime, aData, aProperties ) );
     }
   }
 
@@ -292,12 +383,13 @@ public class ToolAnnotationHelper
   public void addErrorAnnotation( final int aChannelIdx, final long aStartTime, final long aEndTime,
       final Object aErrorID, final Object... aProperties )
   {
-    if ( isValidChannel( aChannelIdx ) )
+    Channel ch = getChannel( aChannelIdx );
+    if ( ch != null )
     {
       Map<String, Object> props = toMap( aProperties );
       props.put( KEY_TYPE, TYPE_ERROR );
 
-      this.context.addAnnotation( new SampleDataAnnotation( aChannelIdx, aStartTime, aEndTime, aErrorID, props ) );
+      this.context.addAnnotation( new SampleDataAnnotation( ch, aStartTime, aEndTime, aErrorID, props ) );
     }
   }
 
@@ -320,12 +412,13 @@ public class ToolAnnotationHelper
   public void addEventAnnotation( final int aChannelIdx, final long aStartTime, final long aEndTime,
       final Object aEventID, final Object... aProperties )
   {
-    if ( isValidChannel( aChannelIdx ) )
+    Channel ch = getChannel( aChannelIdx );
+    if ( ch != null )
     {
       Map<String, Object> props = toMap( aProperties );
       props.put( KEY_TYPE, TYPE_EVENT );
 
-      this.context.addAnnotation( new SampleDataAnnotation( aChannelIdx, aStartTime, aEndTime, aEventID, props ) );
+      this.context.addAnnotation( new SampleDataAnnotation( ch, aStartTime, aEndTime, aEventID, props ) );
     }
   }
 
@@ -340,28 +433,10 @@ public class ToolAnnotationHelper
    */
   public void addLabelAnnotation( final int aChannelIdx, final String aLabel )
   {
-    if ( isValidChannel( aChannelIdx ) )
+    Channel ch = getChannel( aChannelIdx );
+    if ( ch != null )
     {
-      this.context.addAnnotation( new ChannelLabelAnnotation( aChannelIdx, aLabel ) );
-    }
-  }
-
-  /**
-   * Clears all annotations for the channel with the given index and sets its
-   * label to the one given.
-   * 
-   * @param aChannelIdx
-   *          the index of the channel to clear and annotate with the new label;
-   * @param aLabel
-   *          the new label of the channel, may be <code>null</code> to use the
-   *          default label.
-   */
-  public void prepareChannel( final int aChannelIdx, final String aLabel )
-  {
-    if ( isValidChannel( aChannelIdx ) )
-    {
-      this.context.clearAnnotations( aChannelIdx );
-      this.context.addAnnotation( new ChannelLabelAnnotation( aChannelIdx, aLabel ) );
+      this.context.addAnnotation( new ChannelLabelAnnotation( ch, aLabel ) );
     }
   }
 
@@ -384,13 +459,13 @@ public class ToolAnnotationHelper
   public void addSymbolAnnotation( final int aChannelIdx, final long aStartTime, final long aEndTime,
       final int aSymbol, final Object... aProperties )
   {
-    if ( isValidChannel( aChannelIdx ) )
+    Channel ch = getChannel( aChannelIdx );
+    if ( ch != null )
     {
       Map<String, Object> props = toMap( aProperties );
       props.put( KEY_TYPE, TYPE_SYMBOL );
 
-      this.context.addAnnotation( new SampleDataAnnotation( aChannelIdx, aStartTime, aEndTime, Integer
-          .valueOf( aSymbol ), props ) );
+      this.context.addAnnotation( new SampleDataAnnotation( ch, aStartTime, aEndTime, Integer.valueOf( aSymbol ), props ) );
     }
   }
 
@@ -407,12 +482,38 @@ public class ToolAnnotationHelper
   }
 
   /**
+   * Clears all annotations for the channel with the given index and sets its
+   * label to the one given.
+   * 
+   * @param aChannelIdx
+   *          the index of the channel to clear and annotate with the new label;
+   * @param aLabel
+   *          the new label of the channel, may be <code>null</code> to use the
+   *          default label.
+   */
+  public void prepareChannel( final int aChannelIdx, final String aLabel )
+  {
+    Channel ch = getChannel( aChannelIdx );
+    if ( ch != null )
+    {
+      this.context.clearAnnotations( ch.getIndex() );
+      this.context.addAnnotation( new ChannelLabelAnnotation( ch, aLabel ) );
+    }
+  }
+
+  /**
    * @param aChannelIdx
    * @return
    */
-  private boolean isValidChannel( final int aChannelIdx )
+  private Channel getChannel( int aChannelIdx )
   {
-    return ( this.context.getEnabledChannels() & ( 1 << aChannelIdx ) ) != 0;
+    AcquisitionData data = this.context.getData();
+    final int enabled = data.getEnabledChannels();
+    if ( ( enabled & ( 1 << aChannelIdx ) ) != 0 )
+    {
+      return data.getChannels()[aChannelIdx];
+    }
+    return null;
   }
 
   /**

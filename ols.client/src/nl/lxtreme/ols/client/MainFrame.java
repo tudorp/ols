@@ -34,15 +34,15 @@ import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.plaf.*;
 
-import nl.lxtreme.ols.client.about.*;
 import nl.lxtreme.ols.client.action.*;
-import nl.lxtreme.ols.client.api.*;
-import nl.lxtreme.ols.client.icons.*;
+import nl.lxtreme.ols.client.actionmanager.*;
 import nl.lxtreme.ols.client.project.*;
 import nl.lxtreme.ols.client.signaldisplay.*;
 import nl.lxtreme.ols.client.signaldisplay.laf.*;
 import nl.lxtreme.ols.client.signaldisplay.view.*;
 import nl.lxtreme.ols.client.view.*;
+import nl.lxtreme.ols.client2.*;
+import nl.lxtreme.ols.client2.icons.*;
 import nl.lxtreme.ols.common.*;
 import nl.lxtreme.ols.common.acquisition.*;
 import nl.lxtreme.ols.common.acquisition.Cursor;
@@ -771,6 +771,7 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
   private final JTextStatusBar status;
   private final ClientController controller;
   private final ViewController viewController;
+  private final SignalDiagramController diagramController;
   private final File dataStorage;
 
   private AcquisitionDetailsView acquisitionDetails;
@@ -801,7 +802,12 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
     this.dataStorage = aDataStorage;
     this.controller = aController;
 
-    this.viewController = new ViewController();
+    ActionManager actionManager = aController.getActionManager();
+
+    this.viewController = new ViewController( actionManager );
+    this.diagramController = new SignalDiagramController( actionManager );
+
+    ActionManagerFactory.fillActionManager( actionManager, this.controller, this.diagramController );
 
     // Let the host platform determine where this diagram should be displayed;
     // gives it more or less a native feel...
@@ -812,8 +818,6 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
 
     // Add the window icon...
     setIconImages( internalGetIconImages() );
-
-    SignalDiagramController signalDiagramController = this.controller.getSignalDiagramController();
 
     this.status = new JTextStatusBar();
 
@@ -855,24 +859,26 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
     } );
 
     DockableFrame frame;
+    
+    this.diagramController.initialize();
 
-    this.cursorDetails = CursorDetailsView.create( signalDiagramController );
+    this.cursorDetails = CursorDetailsView.create( this.diagramController );
     frame = createDockableFrame( this.cursorDetails, DockContext.STATE_FRAMEDOCKED, DockContext.DOCK_SIDE_EAST );
     frame.setInitIndex( 0 );
     dm.addFrame( frame );
 
-    this.measurementDetails = MeasurementView.create( signalDiagramController );
+    this.measurementDetails = MeasurementView.create( this.diagramController );
     frame = createDockableFrame( this.measurementDetails, DockContext.STATE_FRAMEDOCKED, DockContext.DOCK_SIDE_EAST );
     frame.setInitIndex( 0 );
     dm.addFrame( frame );
 
-    this.acquisitionDetails = AcquisitionDetailsView.create( signalDiagramController );
+    this.acquisitionDetails = AcquisitionDetailsView.create( this.diagramController );
     frame = createDockableFrame( this.acquisitionDetails, DockContext.STATE_FRAMEDOCKED, DockContext.DOCK_SIDE_EAST );
     frame.setDockedHeight( 200 );
     frame.setInitIndex( 1 );
     dm.addFrame( frame );
 
-    this.annotationOverview = AnnotationOverview.create( signalDiagramController );
+    this.annotationOverview = AnnotationOverview.create( this.diagramController );
 
     JToolBar toolBar = new JToolBar();
     toolBar.add( new JButton( this.annotationOverview.getExportAction() ) );
@@ -963,7 +969,7 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
    */
   public void gotoPosition( final int aChannelIdx, final long aSamplePos )
   {
-    SignalDiagramComponent signalDiagram = this.controller.getSignalDiagramController().getSignalDiagram();
+    SignalDiagramComponent signalDiagram = this.diagramController.getSignalDiagram();
     signalDiagram.scrollToTimestamp( aSamplePos );
   }
 
@@ -977,14 +983,14 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
       @Override
       public void run()
       {
-        MainFrame.this.viewController.initialize( aData );
+        viewController.initialize( aData, diagramController );
 
         Workspace workspace = getDockingManager().getWorkspace();
         if ( workspace.getComponentCount() > 0 )
         {
           workspace.remove( 0 );
         }
-        workspace.add( MainFrame.this.viewController.getView(), 0 );
+        workspace.add( viewController.getView(), 0 );
       }
     } );
   }
@@ -1056,9 +1062,9 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
    */
   public void showAboutBox()
   {
-    String version = this.controller.getVersion();
-    AboutBox aboutDialog = new AboutBox( Constants.SHORT_NAME, version );
-    aboutDialog.showDialog();
+//    String version = this.controller.getVersion();
+//    AboutBox aboutDialog = new AboutBox( ClientConstants.SHORT_NAME, version );
+//    aboutDialog.showDialog();
   }
 
   /**
@@ -1077,7 +1083,7 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
    */
   final void diagramSettingsUpdated()
   {
-    SignalDiagramComponent signalDiagram = this.controller.getSignalDiagramController().getSignalDiagram();
+    SignalDiagramComponent signalDiagram = this.diagramController.getSignalDiagram();
     signalDiagram.revalidate();
   }
 
@@ -1088,7 +1094,7 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
    */
   final JComponent getDiagramScrollPane()
   {
-    SignalDiagramComponent signalDiagram = this.controller.getSignalDiagramController().getSignalDiagram();
+    SignalDiagramComponent signalDiagram = this.diagramController.getSignalDiagram();
     final Container viewport = signalDiagram.getParent();
     return ( JComponent )viewport.getParent();
   }
@@ -1317,7 +1323,7 @@ public final class MainFrame extends DefaultDockableHolder implements Closeable,
    */
   private void updateWindowDecorations( final Project aProject )
   {
-    String title = Constants.FULL_NAME;
+    String title = ClientConstants.FULL_NAME;
     if ( aProject != null )
     {
       String projectName = aProject.getName();

@@ -30,6 +30,17 @@ import java.awt.*;
  */
 public interface Cursor extends Cloneable, Comparable<Cursor>
 {
+  // INNER TYPES
+
+  /**
+   * Denotes how to represent a cursor label. Used for automatic placement of
+   * cursor labels.
+   */
+  public static enum LabelStyle
+  {
+    INDEX_ONLY, TIME_ONLY, LABEL_ONLY, INDEX_LABEL, LABEL_TIME;
+  }
+
   // METHODS
 
   /**
@@ -45,9 +56,10 @@ public interface Cursor extends Cloneable, Comparable<Cursor>
   Cursor clone();
 
   /**
-   * Returns the cursor color.
+   * Returns the color of this cursor.
    * 
-   * @return the color of this cursor, never <code>null</code>.
+   * @return the color of this cursor, can be <code>null</code> in case the
+   *         default (UI-specific) color should be used.
    */
   Color getColor();
 
@@ -59,11 +71,21 @@ public interface Cursor extends Cloneable, Comparable<Cursor>
   int getIndex();
 
   /**
-   * Returns the label of this cursor.
+   * Returns the raw label of this cursor, as set with {@link #setLabel(String)}
+   * .
    * 
    * @return the label, can be <code>null</code> if no label is (yet) defined.
    */
   String getLabel();
+
+  /**
+   * Returns a styled label for this cursor.
+   * 
+   * @param aStyle
+   *          the label style to use, cannot be <code>null</code>.
+   * @return a styled label, never <code>null</code>.
+   */
+  String getLabel( LabelStyle aStyle );
 
   /**
    * Returns the time stamp of this cursor.
@@ -109,7 +131,8 @@ public interface Cursor extends Cloneable, Comparable<Cursor>
    * Sets the color of this cursor.
    * 
    * @param aColor
-   *          the color to set, cannot be <code>null</code>.
+   *          the color to set, can be <code>null</code> in case the default
+   *          color for this cursor (UI-specific) should be used.
    */
   void setColor( final Color aColor );
 

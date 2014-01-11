@@ -33,4 +33,12 @@ public interface AcquisitionDataProvider
    *         acquisition results are available, an empty array is returned.
    */
   AcquisitionData[] getAcquiredData();
+
+  /**
+   * Removes an instance of previously acquired data.
+   * 
+   * @param aData
+   *          the acquisition data to remove, cannot be <code>null</code>.
+   */
+  void remove( AcquisitionData aData );
 }

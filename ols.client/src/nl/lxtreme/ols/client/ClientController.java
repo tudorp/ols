@@ -34,14 +34,10 @@ import javax.swing.*;
 import nl.lxtreme.ols.acquisition.*;
 import nl.lxtreme.ols.client.action.*;
 import nl.lxtreme.ols.client.actionmanager.*;
-import nl.lxtreme.ols.client.api.*;
-import nl.lxtreme.ols.client.api.Constants;
-import nl.lxtreme.ols.client.appcallback.*;
-import nl.lxtreme.ols.client.osgi.*;
 import nl.lxtreme.ols.client.project.*;
 import nl.lxtreme.ols.client.signaldisplay.*;
-import nl.lxtreme.ols.client.signaldisplay.model.*;
-import nl.lxtreme.ols.client.view.*;
+import nl.lxtreme.ols.client2.*;
+import nl.lxtreme.ols.client2.api.*;
 import nl.lxtreme.ols.common.*;
 import nl.lxtreme.ols.common.acquisition.*;
 import nl.lxtreme.ols.common.acquisition.Cursor;
@@ -52,10 +48,7 @@ import nl.lxtreme.ols.tool.api.*;
 import nl.lxtreme.ols.util.swing.*;
 import nl.lxtreme.ols.util.swing.component.*;
 
-import org.apache.felix.dm.*;
-import org.apache.felix.dm.Component;
 import org.osgi.framework.*;
-import org.osgi.service.cm.*;
 
 import com.jidesoft.plaf.*;
 
@@ -64,7 +57,7 @@ import com.jidesoft.plaf.*;
  * Denotes a front-end controller for the client.
  */
 public final class ClientController implements ActionProvider, AcquisitionProgressListener, AcquisitionStatusListener,
-    AcquisitionDataListener, ApplicationCallback
+    AcquisitionDataListener /*, ApplicationCallback*/
 {
   // INNER TYPES
 
@@ -165,27 +158,19 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   {
     // VARIABLES
 
-    private final SignalDiagramModel model;
-    private final int startSampleIdx;
-    private final int endSampleIdx;
+    private final AcquisitionData data;
 
     // CONSTRUCTORS
 
     /**
      * Creates a new DefaultToolContext instance.
      * 
-     * @param aStartSampleIdx
-     *          the starting sample index;
-     * @param aEndSampleIdx
-     *          the ending sample index;
      * @param aData
      *          the acquisition result.
      */
-    public DefaultToolContext( final int aStartSampleIdx, final int aEndSampleIdx, final SignalDiagramModel aModel )
+    public DefaultToolContext( AcquisitionData aData )
     {
-      this.startSampleIdx = aStartSampleIdx;
-      this.endSampleIdx = aEndSampleIdx;
-      this.model = aModel;
+      this.data = aData;
     }
 
     /**
@@ -194,7 +179,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
     @Override
     public void addAnnotation( Annotation aAnnotation )
     {
-      this.model.addAnnotation( aAnnotation );
+//      this.model.addAnnotation( aAnnotation ); XXX
 
       scheduleRepaintEvent();
     }
@@ -205,7 +190,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
     @Override
     public void clearAnnotations( int... aChannelIdxs )
     {
-      this.model.clearAnnotations( aChannelIdxs );
+//      this.model.clearAnnotations( aChannelIdxs ); XXX
 
       scheduleRepaintEvent();
     }
@@ -214,68 +199,9 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
      * {@inheritDoc}
      */
     @Override
-    public int getChannels()
-    {
-      return getData().getChannelCount();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public Cursor getCursor( final int aIndex )
-    {
-      Cursor[] cursors = getData().getCursors();
-      if ( aIndex < 0 || aIndex >= cursors.length )
-      {
-        throw new IllegalArgumentException( "Invalid cursor index!" );
-      }
-      return cursors[aIndex];
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
     public AcquisitionData getData()
     {
-      return this.model.getAcquisitionData();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getEnabledChannels()
-    {
-      return getData().getEnabledChannels();
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getEndSampleIndex()
-    {
-      return this.endSampleIdx;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getLength()
-    {
-      return Math.max( 0, this.endSampleIdx - this.startSampleIdx );
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public int getStartSampleIndex()
-    {
-      return this.startSampleIdx;
+      return this.data;
     }
   }
 
@@ -304,7 +230,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   // VARIABLES
 
   private final ActionManager actionManager;
-  private final SignalDiagramController signalDiagramController;
 
   private final ConcurrentMap<String, Device> devices;
   private final ConcurrentMap<String, Tool<?>> tools;
@@ -316,7 +241,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   private volatile ProjectManager projectManager;
   private volatile DataAcquisitionService dataAcquisitionService;
   private volatile MainFrame mainFrame;
-  private volatile UIColorSchemeManager colorSchemeManager;
+//  private volatile UIColorSchemeManager colorSchemeManager;
 
   private volatile long acquisitionStartTime;
 
@@ -332,8 +257,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
     this.exporters = new ConcurrentHashMap<String, Exporter>();
 
     this.actionManager = new ActionManager();
-
-    this.signalDiagramController = new SignalDiagramController( this.actionManager );
 
     this.progressAccumulatingRunnable = new ProgressUpdatingRunnable();
     this.repaintAccumulatingRunnable = new AccumulatingRepaintingRunnable();
@@ -496,7 +419,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   }
 
   /**
-   * @see nl.lxtreme.ols.client.IClientController#cancelCapture()
+   * @see nl.lxtreme.ols.client.IClientController#cancelAcquisition()
    */
   public void cancelCapture()
   {
@@ -509,7 +432,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
 
     try
     {
-      acquisitionService.cancelAcquisition( device );
+      acquisitionService.cancelAcquisition( device.getName() );
     }
     catch ( final IllegalStateException exception )
     {
@@ -544,7 +467,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
       {
         setStatusOnEDT( "Capture from {0} started at {1,date,medium} {1,time,medium} ...", device.getName(), new Date() );
 
-        acquisitionService.acquireData( config, device );
+        acquisitionService.acquireData( config, device.getName() );
         return true;
       }
 
@@ -560,6 +483,16 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
     {
       updateActionsOnEDT();
     }
+  }
+
+  /**
+   * Returns the current value of actionManager.
+   * 
+   * @return the actionManager
+   */
+  public ActionManager getActionManager()
+  {
+    return this.actionManager;
   }
 
   /**
@@ -579,7 +512,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
 
   public void clearAnnotations()
   {
-    getSignalDiagramController().getSignalDiagramModel().clearAllAnnotations();
+//    getSignalDiagramController().getSignalDiagramModel().clearAllAnnotations(); XXX
 
     scheduleRepaintEvent();
   }
@@ -784,16 +717,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   }
 
   /**
-   * Returns the signal diagram controller.
-   * 
-   * @return a signal diagram controller, never <code>null</code>.
-   */
-  public SignalDiagramController getSignalDiagramController()
-  {
-    return this.signalDiagramController;
-  }
-
-  /**
    * Returns all available tools.
    * 
    * @return an array of tool names, never <code>null</code>, but an empty array
@@ -824,7 +747,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   /**
    * {@inheritDoc}
    */
-  @Override
   public boolean handleAbout()
   {
     showAboutBox();
@@ -834,7 +756,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   /**
    * {@inheritDoc}
    */
-  @Override
   public boolean handlePreferences()
   {
     showPreferencesDialog( getMainFrame() );
@@ -844,7 +765,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   /**
    * {@inheritDoc}
    */
-  @Override
   public boolean handleQuit()
   {
     LOG.fine( "Handling quit from app.menu..." );
@@ -871,7 +791,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   /**
    * {@inheritDoc}
    */
-  @Override
   public boolean hasPreferences()
   {
     return true;
@@ -1158,7 +1077,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
     {
       setStatusOnEDT( "Capture from {0} started at {1,date,medium} {1,time,medium} ...", devCtrl.getName(), new Date() );
 
-      acquisitionService.acquireData( devCtrl );
+      acquisitionService.acquireData( devCtrl.getName() );
     }
     catch ( final IOException exception )
     {
@@ -1307,36 +1226,36 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
    */
   public void showPreferencesDialog( final Window aParent )
   {
-    final PreferencesDialog dialog = new PreferencesDialog( aParent, this.colorSchemeManager );
-
-    final Bundle thisBundle = getBundle();
-    final DependencyManager dm = new DependencyManager( thisBundle.getBundleContext() );
-    final Component comp = dm.createComponent();
-
-    comp.setImplementation( dialog ).add( dm.createServiceDependency() //
-        .setService( ConfigurationAdmin.class ) //
-        .setInstanceBound( true ) //
-        .setRequired( true ) ) //
-        .addStateListener( new ComponentStateAdapter()
-        {
-          @Override
-          public void started( final Component aComponent )
-          {
-            if ( dialog.showDialog() )
-            {
-              // Update the default settings (if needed)...
-              updateDefaultSettings();
-
-              // Ensure all UI-related changes are immediately visible...
-              repaintMainFrame();
-            }
-
-            // All changes are persisted automatically...
-            dm.remove( comp );
-          }
-        } );
-
-    dm.add( comp );
+//    final PreferencesDialog dialog = new PreferencesDialog( aParent, this.colorSchemeManager );
+//
+//    final Bundle thisBundle = getBundle();
+//    final DependencyManager dm = new DependencyManager( thisBundle.getBundleContext() );
+//    final Component comp = dm.createComponent();
+//
+//    comp.setImplementation( dialog ).add( dm.createServiceDependency() //
+//        .setService( ConfigurationAdmin.class ) //
+//        .setInstanceBound( true ) //
+//        .setRequired( true ) ) //
+//        .addStateListener( new ComponentStateAdapter()
+//        {
+//          @Override
+//          public void started( final Component aComponent )
+//          {
+//            if ( dialog.showDialog() )
+//            {
+//              // Update the default settings (if needed)...
+//              updateDefaultSettings();
+//
+//              // Ensure all UI-related changes are immediately visible...
+//              repaintMainFrame();
+//            }
+//
+//            // All changes are persisted automatically...
+//            dm.remove( comp );
+//          }
+//        } );
+//
+//    dm.add( comp );
   }
 
   /**
@@ -1346,7 +1265,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
   public final void start()
   {
     final String version = getVersion();
-    initOSSpecifics( Constants.SHORT_NAME, getVersion() );
+    initOSSpecifics( ClientConstants.SHORT_NAME, getVersion() );
 
     // Make sure we're running on the EDT to ensure the Swing threading model is
     // correctly defined...
@@ -1355,10 +1274,6 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
       @Override
       public void run()
       {
-        ClientController.this.signalDiagramController.initialize();
-
-        ActionManagerFactory.fillActionManager( ClientController.this.actionManager, ClientController.this );
-
         // Cause exceptions to be shown in a more user-friendly way...
         JErrorDialog.installSwingExceptionHandler();
 
@@ -1369,11 +1284,12 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
         setMainFrame( mf );
 
         // ensure that all changes to cursors are reflected in the UI...
-        ClientController.this.signalDiagramController.addCursorChangeListener( new CursorActionListener() );
+        // ClientController.this.signalDiagramController.addCursorChangeListener(
+        // new CursorActionListener() ); XXX
         updateDefaultSettings();
 
-        mf.setTitle( Constants.FULL_NAME );
-        mf.setStatus( "{0} v{1} ready ...", Constants.SHORT_NAME, version );
+        mf.setTitle( ClientConstants.FULL_NAME );
+        mf.setStatus( "{0} v{1} ready ...", ClientConstants.SHORT_NAME, version );
         mf.setVisible( true );
 
         LOG.info( "Client started ..." );
@@ -1534,10 +1450,12 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
    */
   final void removeProjectManager( final ProjectManager aProjectManager )
   {
-    if ( this.signalDiagramController != null )
-    {
-      aProjectManager.removePropertyChangeListener( this.signalDiagramController );
-    }
+    // XXX
+    // if ( this.signalDiagramController != null )
+    // {
+    // aProjectManager.removePropertyChangeListener(
+    // this.signalDiagramController );
+    // }
     if ( this.mainFrame != null )
     {
       aProjectManager.removePropertyChangeListener( this.mainFrame );
@@ -1591,10 +1509,12 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
 
     if ( this.projectManager != null )
     {
-      if ( this.signalDiagramController != null )
-      {
-        this.projectManager.addPropertyChangeListener( this.signalDiagramController );
-      }
+      // XXX
+      // if ( this.signalDiagramController != null )
+      // {
+      // this.projectManager.addPropertyChangeListener(
+      // this.signalDiagramController );
+      // }
       if ( this.mainFrame != null )
       {
         this.projectManager.addPropertyChangeListener( this.mainFrame );
@@ -1639,7 +1559,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
         final Device device = getDevice();
 
         final boolean deviceControllerSet = ( device != null );
-        final boolean deviceCapturing = ( acquisitionService != null ) && acquisitionService.isAcquiring();
+        final boolean deviceCapturing = ( acquisitionService != null ) && acquisitionService.isAcquiring( getDevice().getName() );
         final boolean deviceSetup = deviceControllerSet && !deviceCapturing && device.isSetup();
 
         getAction( CaptureAction.ID ).setEnabled( deviceControllerSet );
@@ -1676,7 +1596,8 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
           getAction( GotoNthCursorAction.getID( c ) ).setEnabled( gotoCursorNEnabled );
         }
 
-        final boolean snapCursorMode = getSignalDiagramController().getSignalDiagramModel().isSnapCursorMode();
+        final boolean snapCursorMode = false; // XXX
+                                              // getSignalDiagramController().getSignalDiagramModel().isSnapCursorMode();
         getAction( SetCursorSnapModeAction.ID ).putValue( Action.SELECTED_KEY, Boolean.valueOf( snapCursorMode ) );
 
         getAction( GotoFirstCursorAction.ID ).setEnabled( enableCursors && anyCursorSet );
@@ -1713,7 +1634,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
    */
   final void updateDefaultSettings()
   {
-    this.signalDiagramController.setDefaultSettings();
+    // this.signalDiagramController.setDefaultSettings(); XXX
   }
 
   /**
@@ -1724,7 +1645,8 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
    */
   protected boolean areCursorsEnabled()
   {
-    return this.signalDiagramController.getSignalDiagramModel().isCursorMode();
+    return true; // XXX
+                 // this.signalDiagramController.getSignalDiagramModel().isCursorMode();
   }
 
   /**
@@ -1802,44 +1724,7 @@ public final class ClientController implements ActionProvider, AcquisitionProgre
    */
   private ToolContext createToolContext()
   {
-    int startOfDecode = -1;
-    int endOfDecode = -1;
-
-    final AcquisitionData capturedData = getCurrentData();
-    final SignalDiagramModel model = getSignalDiagramController().getSignalDiagramModel();
-
-    if ( capturedData != null )
-    {
-      Cursor[] cursors = capturedData.getCursors();
-
-      final int dataLength = capturedData.getValues().length;
-      if ( areCursorsEnabled() )
-      {
-        if ( cursors.length > 1 && cursors[0].isDefined() )
-        {
-          final Cursor cursor1 = cursors[0];
-          startOfDecode = capturedData.getSampleIndex( cursor1.getTimestamp() ) - 1;
-        }
-        if ( cursors.length > 2 && cursors[1].isDefined() )
-        {
-          final Cursor cursor2 = cursors[1];
-          endOfDecode = capturedData.getSampleIndex( cursor2.getTimestamp() ) + 1;
-        }
-      }
-      else
-      {
-        startOfDecode = 0;
-        endOfDecode = dataLength;
-      }
-
-      startOfDecode = Math.max( 0, startOfDecode );
-      if ( ( endOfDecode < 0 ) || ( endOfDecode >= dataLength ) )
-      {
-        endOfDecode = dataLength - 1;
-      }
-    }
-
-    return new DefaultToolContext( startOfDecode, endOfDecode, model );
+    return new DefaultToolContext( getCurrentData() );
   }
 
   private Bundle getBundle()
