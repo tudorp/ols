@@ -53,19 +53,20 @@ public class CSVDeviceDialog extends JDialog implements Configurable, Closeable 
         this.setupConfirmed = false;
 
         fileChooser = new JFileChooser();
-                fileChooser.addChoosableFileFilter(new FileFilter() {
+        fileChooser.addChoosableFileFilter(new FileFilter() {
 
-                    @Override
-                    public boolean accept(File f) {
-                        return f.isFile() && f.getName().toLowerCase().endsWith(".csv");
-                    }
+            @Override
+            public boolean accept(File f) {
+                return f.isFile() && f.getName().toLowerCase().endsWith(".csv");
+            }
 
-                    @Override
-                    public String getDescription() {
-                        return "Comma separated files (*.csv)";
-                    }
+            @Override
+            public String getDescription() {
+                return "Comma separated files (*.csv)";
+            }
 
-                });
+        });
+        fileChooser.setAcceptAllFileFilterUsed(false);
         initDialog();
     }
 
