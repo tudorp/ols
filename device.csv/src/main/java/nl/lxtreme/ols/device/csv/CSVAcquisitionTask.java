@@ -60,11 +60,12 @@ public class CSVAcquisitionTask implements AcquisitionTask {
 
     private final class ChannelData {
         private final List<Integer> rawData = new ArrayList<Integer>();
-        private Float meanValue = null;
+        private boolean setupDone = false;
+        private float meanValue;
 
         public void addRawData(int rawData) {
             this.rawData.add(rawData);
-            meanValue = null;
+            setupDone = false;
         }
 
         public boolean isEmpty() {
@@ -79,16 +80,27 @@ public class CSVAcquisitionTask implements AcquisitionTask {
             return rawData;
         }
 
-        public void calculateMeanValue() {
-            long total = 0;
-            for (int value : rawData) {
-                total += value;
+        public void setup(int length) {
+            while (rawData.size() > length) {
+                rawData.remove(rawData.size() - 1);
             }
-            meanValue = total / (float) rawData.size();
+            int min = Integer.MAX_VALUE;
+            int max = Integer.MIN_VALUE;
+            for (int value : rawData) {
+                if (value < min) {
+                    min = value;
+                }
+                if (value > max) {
+                    max = value;
+                }
+            }
+            meanValue = ((max - min) / 2f) + min;
+            System.out.println("mean is: " + meanValue);
+            setupDone = true;
         }
 
         public int getHighLowAt(int index) {
-            if (meanValue == null) {
+            if (!setupDone) {
                 throw new IllegalStateException("You need to calculate the mean value first");
             }
             if (index >= this.rawData.size()) {
@@ -132,13 +144,12 @@ public class CSVAcquisitionTask implements AcquisitionTask {
         }
 
         //remove empty lists and count channels
-        int maxLength = 0;
+        int minLength = Integer.MAX_VALUE;
         for (Iterator<ChannelData> iterator = channelDatas.iterator(); iterator.hasNext();) {
             final ChannelData channelData = iterator.next();
             if (!channelData.isEmpty()) {
-                channelData.calculateMeanValue();
-                if (channelData.length() > maxLength) {
-                    maxLength = channelData.length();
+                if (channelData.length() < minLength) {
+                    minLength = channelData.length();
                 }
                 channels++;
             } else {
@@ -146,8 +157,12 @@ public class CSVAcquisitionTask implements AcquisitionTask {
             }
         }
 
-        int[] data = new int[maxLength];
-        for (int i = 0; i < maxLength; ++i) {
+        for (ChannelData channelData : channelDatas) {
+            channelData.setup(minLength);
+        }
+
+        int[] data = new int[minLength];
+        for (int i = 0; i < minLength; ++i) {
             for (int j = 0; j < channelDatas.size(); ++j) {
                 ChannelData channelData = channelDatas.get(j);
                 data[i] = data[i] | (channelData.getHighLowAt(i) << j);

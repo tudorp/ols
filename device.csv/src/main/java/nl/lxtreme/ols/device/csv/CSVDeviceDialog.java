@@ -57,7 +57,7 @@ public class CSVDeviceDialog extends JDialog implements Configurable, Closeable 
 
             @Override
             public boolean accept(File f) {
-                return f.isFile() && f.getName().toLowerCase().endsWith(".csv");
+                return !f.isFile() || f.getName().toLowerCase().endsWith(".csv");
             }
 
             @Override
