@@ -42,6 +42,7 @@
 				<include>nl.lxtreme.ols:service.taskexecution</include>
 				<include>nl.lxtreme.ols:util</include>
 				<include>nl.lxtreme.ols:org.rxtx</include>
+				<include>nl.lxtreme.ols.device:csv-import</include>
 				<include>nl.lxtreme.ols.device:test</include>
 				<include>nl.lxtreme.ols.device:generic</include>
 				<include>nl.lxtreme.ols.device:logicsniffer</include>

@@ -48,6 +48,7 @@
 		<module>client</module>
 		<module>client.project</module>
 		<module>device.test</module>
+		<module>device.csv</module>
 		<module>device.generic</module>
 		<module>device.logicsniffer</module>
 		<module>tool.base</module>

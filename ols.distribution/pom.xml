@@ -124,6 +124,12 @@
 		</dependency>
 		<dependency>
 			<groupId>nl.lxtreme.ols.device</groupId>
+			<artifactId>csv-import</artifactId>
+			<scope>runtime</scope>
+                        <version>1.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>nl.lxtreme.ols.device</groupId>
 			<artifactId>generic</artifactId>
 			<scope>runtime</scope>
 		</dependency>
